@@ -312,10 +312,14 @@ public class Neighbors {
     }
 
     @Procedure("apoc.neighbors.athop.count")
-    @Description("apoc.neighbors.athop.count(node, rel-direction-pattern, distance) - returns distinct nodes of the given relationships in the pattern at a distance, can use '>' or '<' for all outgoing or incoming relationships")
-    public Stream<LongResult> neighborsAtHopCount(@Name("node") Node node, @Name(value = "types", defaultValue = "") String types, @Name(value="distance", defaultValue = "1") Long distance) {
+    @Description("apoc.neighbors.athop.count(node, rel-direction-pattern, distance, stopCountingAt) - returns distinct nodes of the given relationships in the pattern at a distance, can use '>' or '<' for all outgoing or incoming relationships.  If stopCountingAt is a number > 0 and distance == 1 then the count will stop for the specific node once it hits that number. Note: stopCountingAt will be disabled if the distance is > 1")
+    public Stream<LongResult> neighborsAtHopCount(@Name("node") Node node, @Name(value = "types", defaultValue = "") String types, @Name(value="distance", defaultValue = "1") Long distance, @Name(value="stopCountingAt", defaultValue = "0") Long stopCountingAt) {
         if (distance < 1) return Stream.empty();
         if (types == null || types.isEmpty()) return Stream.empty();
+
+        // We only want to use the hasStopCount for counts of distance 1.
+        boolean hasStopCount = stopCountingAt > 0 && distance == 1;
+
 
         // Initialize bitmaps for iteration
         Roaring64NavigableMap[] seen = new Roaring64NavigableMap[distance.intValue()];
@@ -328,25 +332,30 @@ public class Neighbors {
 
         List<Pair<RelationshipType, Direction>> typesAndDirections = parse(types);
         // First Hop
+        outerloop:
         for (Pair<RelationshipType, Direction> pair : typesAndDirections) {
             for (Relationship r : getRelationshipsByTypeAndDirection(node, pair)) {
                 seen[0].add(r.getOtherNodeId(nodeId));
-            }
-        }
-
-        for (int i = 1; i < distance; i++) {
-            iterator = seen[i - 1].iterator();
-            while (iterator.hasNext()) {
-                node = tx.getNodeById(iterator.next());
-                for (Pair<RelationshipType, Direction> pair : typesAndDirections) {
-                    for (Relationship r : getRelationshipsByTypeAndDirection(node, pair)) {
-                        seen[i].add(r.getOtherNodeId(node.getId()));
-                    }
+                if(hasStopCount && seen[0].getLongCardinality() >= stopCountingAt){
+                    break outerloop;
                 }
             }
-            for (int j = 0; j < i; j++) {
-                seen[i].andNot(seen[j]);
-                seen[i].removeLong(nodeId);
+        }
+        if(!hasStopCount) {
+            for (int i = 1; i < distance; i++) {
+                iterator = seen[i - 1].iterator();
+                while (iterator.hasNext()) {
+                    node = tx.getNodeById(iterator.next());
+                    for (Pair<RelationshipType, Direction> pair : typesAndDirections) {
+                        for (Relationship r : getRelationshipsByTypeAndDirection(node, pair)) {
+                            seen[i].add(r.getOtherNodeId(node.getId()));
+                        }
+                    }
+                }
+                for (int j = 0; j < i; j++) {
+                    seen[i].andNot(seen[j]);
+                    seen[i].removeLong(nodeId);
+                }
             }
         }
 

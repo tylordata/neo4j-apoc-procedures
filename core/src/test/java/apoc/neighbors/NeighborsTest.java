@@ -152,6 +152,30 @@ public class NeighborsTest {
                 });
     }
 
+     @Test
+    public void getNeighborsCountAt1HopWithLimit() {
+         TestUtil.testCall(db, "MATCH (n:First) WITH n " +
+                         "CALL apoc.neighbors.athop.count(n,'KNOWS>', 3) YIELD value AS number " +
+                         "RETURN number",
+                 (row) -> assertEquals(1L, row.get("number")));
+
+         TestUtil.testCall(db, "MATCH (n:First) WITH n " +
+                         "CALL apoc.neighbors.byhop.count(n,'KNOWS>', 3, 1) YIELD value AS numbers " +
+                         "RETURN numbers",
+                 (row) -> {
+                     List<Long> numbers = (List<Long>) row.get("numbers");
+                     assertEquals(1, numbers.size());
+                 });
+         /*
+                                TestUtil.testCall(db, "MATCH (n:Neighbor {name: 'b'}) WITH n " +
+                                                                "CALL apoc.neighbors.athop.count(n,'KNOWS>', 1, 1) YIELD value AS number " +
+                                                                "RETURN number",
+                                               (row) -> assertEquals(1L, row.get("number")));
+
+          */
+     }
+
+
     @Test
     public void getNeighborsCountAt2Hops() {
         TestUtil.testCall(db, "MATCH (n:First) WITH n " +
