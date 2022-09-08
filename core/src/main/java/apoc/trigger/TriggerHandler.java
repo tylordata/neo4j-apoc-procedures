@@ -5,7 +5,21 @@ import apoc.Pools;
 import apoc.SystemLabels;
 import apoc.SystemPropertyKeys;
 import apoc.util.Util;
+
+import org.neo4j.bolt.runtime.AccessMode;
+import org.neo4j.bolt.txtracking.TransactionIdTracker;
+import org.neo4j.bolt.v41.messaging.RoutingContext;
+import org.neo4j.configuration.Config;
+import org.neo4j.dbms.database.DatabaseManager;
+import org.neo4j.fabric.FabricDatabaseManager;
+import org.neo4j.fabric.bookmark.LocalGraphTransactionIdTracker;
+import org.neo4j.fabric.bookmark.TransactionBookmarkManager;
+import org.neo4j.fabric.bookmark.TransactionBookmarkManagerFactory;
+import org.neo4j.fabric.bookmark.TransactionBookmarkManagerImpl;
+import org.neo4j.fabric.transaction.FabricTransactionInfo;
+import org.neo4j.fabric.transaction.TransactionManager;
 import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.fabric.executor.FabricExecutor;
 import org.neo4j.function.ThrowingFunction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -19,12 +33,20 @@ import org.neo4j.internal.helpers.collection.Pair;
 import org.neo4j.internal.kernel.api.exceptions.ProcedureException;
 import org.neo4j.kernel.api.procedure.Context;
 import org.neo4j.kernel.api.procedure.GlobalProcedures;
+import org.neo4j.kernel.database.DatabaseIdRepository;
+import org.neo4j.kernel.database.DatabaseReference;
+import org.neo4j.kernel.internal.GraphDatabaseAPI;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 import org.neo4j.logging.Log;
+import org.neo4j.monitoring.Monitors;
 import org.neo4j.scheduler.Group;
 import org.neo4j.scheduler.JobHandle;
 import org.neo4j.scheduler.JobScheduler;
+import org.neo4j.time.Clocks;
+import org.neo4j.time.SystemNanoClock;
+import org.neo4j.values.virtual.MapValue;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -36,6 +58,8 @@ import java.util.stream.Collectors;
 
 import static apoc.ApocConfig.APOC_TRIGGER_ENABLED;
 import static apoc.ApocConfig.apocConfig;
+import static org.neo4j.internal.kernel.api.connectioninfo.ClientConnectionInfo.EMBEDDED_CONNECTION;
+import static org.neo4j.internal.kernel.api.security.LoginContext.AUTH_DISABLED;
 
 public class TriggerHandler extends LifecycleAdapter implements TransactionEventListener<Void> {
 
@@ -45,7 +69,7 @@ public class TriggerHandler extends LifecycleAdapter implements TransactionEvent
 
     private final ConcurrentHashMap<String, Map<String,Object>> activeTriggers = new ConcurrentHashMap();
     private final Log log;
-    private final GraphDatabaseService db;
+    private final GraphDatabaseAPI db;
     private final DatabaseManagementService databaseManagementService;
     private final ApocConfig apocConfig;
     private final Pools pools;
@@ -61,7 +85,7 @@ public class TriggerHandler extends LifecycleAdapter implements TransactionEvent
             " Set 'apoc.trigger.enabled=true' in your apoc.conf file located in the $NEO4J_HOME/conf/ directory.";
     private final ThrowingFunction<Context, Transaction, ProcedureException> transactionComponentFunction;
 
-    public TriggerHandler(GraphDatabaseService db, DatabaseManagementService databaseManagementService,
+    public TriggerHandler(GraphDatabaseAPI db, DatabaseManagementService databaseManagementService,
                           ApocConfig apocConfig, Log log, GlobalProcedures globalProceduresRegistry,
                           Pools pools, JobScheduler jobScheduler) {
         this.db = db;
@@ -137,18 +161,37 @@ public class TriggerHandler extends LifecycleAdapter implements TransactionEvent
         checkEnabled();
         Map<String, Object> previous = activeTriggers.get(name);
 
-        withSystemDb(tx -> {
-            Node node = Util.mergeNode(tx, SystemLabels.ApocTrigger, null,
-                    Pair.of(SystemPropertyKeys.database.name(), db.databaseName()),
-                    Pair.of(SystemPropertyKeys.name.name(), name));
-            node.setProperty(SystemPropertyKeys.statement.name(), statement);
-            node.setProperty(SystemPropertyKeys.selector.name(), Util.toJson(selector));
-            node.setProperty(SystemPropertyKeys.params.name(), Util.toJson(params));
-            node.setProperty(SystemPropertyKeys.paused.name(), false);
-            setLastUpdate(tx);
-            return null;
-        });
 
+        FabricExecutor fabricExecutor = db.getDependencyResolver().resolveDependency( FabricExecutor.class );
+        TransactionManager transactionManager = db.getDependencyResolver().resolveDependency( TransactionManager.class );
+        FabricDatabaseManager fabricDatabaseManager = db.getDependencyResolver().resolveDependency( FabricDatabaseManager.class );
+        TransactionBookmarkManagerFactory txManagerFactory = db.getDependencyResolver().resolveDependency( TransactionBookmarkManagerFactory.class );
+        DatabaseManager<?> databaseManager = db.getDependencyResolver().resolveDependency( DatabaseManager.class );
+
+        var databaseIdRepository = databaseManager.databaseIdRepository();
+        var serverConfig = db.getDependencyResolver().resolveDependency( Config.class );
+        var transactionIdTracker = new TransactionIdTracker( databaseManagementService, new Monitors(), Clocks.nanoClock() );
+        var localGraphTransactionIdTracker = new LocalGraphTransactionIdTracker( transactionIdTracker, databaseIdRepository, serverConfig );
+        var txBookmarkManager = txManagerFactory.createTransactionBookmarkManager( localGraphTransactionIdTracker );
+
+        DatabaseReference databaseRef = null;
+        try {
+            databaseRef = fabricDatabaseManager.getDatabaseReference( "system" );
+        } catch (Exception e) {}
+        var transactionInfo = new FabricTransactionInfo( AccessMode.WRITE, AUTH_DISABLED,
+                                                         EMBEDDED_CONNECTION, databaseRef, false, Duration.ZERO, Map.of(), new RoutingContext( false, Map.of() ) );
+        var tx1 = transactionManager.begin( transactionInfo, txBookmarkManager );
+        String st = "CREATE (:ApocTrigger { " +
+                   SystemPropertyKeys.database.name() + ":" + "'" + db.databaseName() + "'" +
+                   "," + SystemPropertyKeys.name.name() + ":" + "'" + name + "'" +
+                   "," + SystemPropertyKeys.statement.name() + ":" + "'" + statement + "'" +
+                   "," + SystemPropertyKeys.selector.name() + ":" + "'" + Util.toJson(selector) + "'" +
+                   "," + SystemPropertyKeys.params.name() + ":" + "'" + Util.toJson(params) + "'" +
+                   "," + SystemPropertyKeys.paused.name() + ":" + "'" + "false" + "'" +
+                   "," + SystemPropertyKeys.lastUpdated.name() + ":" + "'" + System.currentTimeMillis() + "'" +
+                   "})";
+        fabricExecutor.run( tx1, st, MapValue.EMPTY );
+        tx1.commit();
         updateCache();
         return previous;
     }

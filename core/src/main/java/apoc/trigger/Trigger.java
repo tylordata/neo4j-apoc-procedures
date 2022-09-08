@@ -1,7 +1,12 @@
 package apoc.trigger;
 
 import apoc.util.Util;
+
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.kernel.api.procedure.SystemProcedure;
+import org.neo4j.kernel.internal.GraphDatabaseAPI;
 import org.neo4j.procedure.Context;
 import org.neo4j.procedure.Description;
 import org.neo4j.procedure.Mode;
@@ -63,6 +68,7 @@ public class Trigger {
         return Stream.of(new TriggerInfo(name,statement,selector, params,true, false));
     }
 
+    @SystemProcedure
     @Procedure(mode = Mode.WRITE)
     @Description("remove previously added trigger, returns trigger information")
     public Stream<TriggerInfo> remove(@Name("name")String name) {
@@ -73,6 +79,7 @@ public class Trigger {
         return Stream.of(new TriggerInfo(name,(String)removed.get("statement"), (Map<String, Object>) removed.get("selector"), (Map<String, Object>) removed.get("params"),false, false));
     }
 
+    @SystemProcedure
     @Procedure(mode = Mode.WRITE)
     @Description("removes all previously added trigger, returns trigger information")
     public Stream<TriggerInfo> removeAll() {
@@ -96,6 +103,7 @@ public class Trigger {
         return new TriggerInfo(name, null, null, false, false);
     }
 
+    @SystemProcedure
     @Procedure(mode = Mode.READ)
     @Description("list all installed triggers")
     public Stream<TriggerInfo> list() {
