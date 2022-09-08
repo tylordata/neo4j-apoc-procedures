@@ -12,6 +12,7 @@ import org.neo4j.bolt.v41.messaging.RoutingContext;
 import org.neo4j.configuration.Config;
 import org.neo4j.dbms.database.DatabaseManager;
 import org.neo4j.fabric.FabricDatabaseManager;
+import org.neo4j.fabric.bolt.BoltFabricDatabaseManagementService;
 import org.neo4j.fabric.bookmark.LocalGraphTransactionIdTracker;
 import org.neo4j.fabric.bookmark.TransactionBookmarkManager;
 import org.neo4j.fabric.bookmark.TransactionBookmarkManagerFactory;
@@ -23,6 +24,7 @@ import org.neo4j.fabric.executor.FabricExecutor;
 import org.neo4j.function.ThrowingFunction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.QueryStatistics;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.event.TransactionData;
@@ -31,24 +33,30 @@ import org.neo4j.internal.helpers.collection.Iterators;
 import org.neo4j.internal.helpers.collection.MapUtil;
 import org.neo4j.internal.helpers.collection.Pair;
 import org.neo4j.internal.kernel.api.exceptions.ProcedureException;
+import org.neo4j.kernel.api.KernelTransaction;
 import org.neo4j.kernel.api.procedure.Context;
 import org.neo4j.kernel.api.procedure.GlobalProcedures;
 import org.neo4j.kernel.database.DatabaseIdRepository;
 import org.neo4j.kernel.database.DatabaseReference;
+import org.neo4j.kernel.impl.query.QuerySubscriber;
 import org.neo4j.kernel.internal.GraphDatabaseAPI;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
 import org.neo4j.logging.Log;
+import org.neo4j.memory.EmptyMemoryTracker;
 import org.neo4j.monitoring.Monitors;
 import org.neo4j.scheduler.Group;
 import org.neo4j.scheduler.JobHandle;
 import org.neo4j.scheduler.JobScheduler;
 import org.neo4j.time.Clocks;
 import org.neo4j.time.SystemNanoClock;
+import org.neo4j.values.AnyValue;
 import org.neo4j.values.virtual.MapValue;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -153,45 +161,28 @@ public class TriggerHandler extends LifecycleAdapter implements TransactionEvent
         }
     }
 
-    public Map<String, Object> add(String name, String statement, Map<String,Object> selector) {
+    public Map<String, Object> add(String name, String statement, Map<String,Object> selector) throws Exception {
         return add(name, statement, selector, Collections.emptyMap());
     }
 
-    public Map<String, Object> add(String name, String statement, Map<String,Object> selector, Map<String,Object> params) {
+    public Map<String, Object> add(String name, String statement, Map<String,Object> selector, Map<String,Object> params) throws Exception {
         checkEnabled();
         Map<String, Object> previous = activeTriggers.get(name);
 
+        withSystemDb(tx -> {
+            Node node = Util.mergeNode(tx, SystemLabels.ApocTrigger, null,
+                                       Pair.of(SystemPropertyKeys.database.name(), db.databaseName()),
+                                       Pair.of(SystemPropertyKeys.name.name(), name));
+            node.setProperty(SystemPropertyKeys.statement.name(), statement);
+            node.setProperty(SystemPropertyKeys.selector.name(), Util.toJson(selector));
+            node.setProperty(SystemPropertyKeys.params.name(), Util.toJson(params));
+            node.setProperty(SystemPropertyKeys.paused.name(), false);
+            setLastUpdate(tx);
+            return null;
+        });
 
-        FabricExecutor fabricExecutor = db.getDependencyResolver().resolveDependency( FabricExecutor.class );
-        TransactionManager transactionManager = db.getDependencyResolver().resolveDependency( TransactionManager.class );
-        FabricDatabaseManager fabricDatabaseManager = db.getDependencyResolver().resolveDependency( FabricDatabaseManager.class );
-        TransactionBookmarkManagerFactory txManagerFactory = db.getDependencyResolver().resolveDependency( TransactionBookmarkManagerFactory.class );
-        DatabaseManager<?> databaseManager = db.getDependencyResolver().resolveDependency( DatabaseManager.class );
-
-        var databaseIdRepository = databaseManager.databaseIdRepository();
-        var serverConfig = db.getDependencyResolver().resolveDependency( Config.class );
-        var transactionIdTracker = new TransactionIdTracker( databaseManagementService, new Monitors(), Clocks.nanoClock() );
-        var localGraphTransactionIdTracker = new LocalGraphTransactionIdTracker( transactionIdTracker, databaseIdRepository, serverConfig );
-        var txBookmarkManager = txManagerFactory.createTransactionBookmarkManager( localGraphTransactionIdTracker );
-
-        DatabaseReference databaseRef = null;
-        try {
-            databaseRef = fabricDatabaseManager.getDatabaseReference( "system" );
-        } catch (Exception e) {}
-        var transactionInfo = new FabricTransactionInfo( AccessMode.WRITE, AUTH_DISABLED,
-                                                         EMBEDDED_CONNECTION, databaseRef, false, Duration.ZERO, Map.of(), new RoutingContext( false, Map.of() ) );
-        var tx1 = transactionManager.begin( transactionInfo, txBookmarkManager );
-        String st = "CREATE (:ApocTrigger { " +
-                   SystemPropertyKeys.database.name() + ":" + "'" + db.databaseName() + "'" +
-                   "," + SystemPropertyKeys.name.name() + ":" + "'" + name + "'" +
-                   "," + SystemPropertyKeys.statement.name() + ":" + "'" + statement + "'" +
-                   "," + SystemPropertyKeys.selector.name() + ":" + "'" + Util.toJson(selector) + "'" +
-                   "," + SystemPropertyKeys.params.name() + ":" + "'" + Util.toJson(params) + "'" +
-                   "," + SystemPropertyKeys.paused.name() + ":" + "'" + "false" + "'" +
-                   "," + SystemPropertyKeys.lastUpdated.name() + ":" + "'" + System.currentTimeMillis() + "'" +
-                   "})";
-        fabricExecutor.run( tx1, st, MapValue.EMPTY );
-        tx1.commit();
+        var execution = tx.executeQuery(st, MapValue.EMPTY, true, subscriber);
+        execution.getQueryExecution().consumeAll();
         updateCache();
         return previous;
     }
@@ -345,8 +336,60 @@ public class TriggerHandler extends LifecycleAdapter implements TransactionEvent
         }
     }
 
-    private <T> T withSystemDb(Function<Transaction, T> action) {
-        try (Transaction tx = apocConfig.getSystemDb().beginTx()) {
+    private <T> T withSystemDb(Function<Transaction, T> action) throws Exception {
+        var tx = db.getDependencyResolver()
+                   .resolveDependency( BoltFabricDatabaseManagementService.class)
+                   .database( "system", EmptyMemoryTracker.INSTANCE)
+                   .beginTransaction(
+                           KernelTransaction.Type.EXPLICIT,
+                           AUTH_DISABLED,
+                           EMBEDDED_CONNECTION,
+                           List.of(),
+                           Duration.ofSeconds(120),
+                           AccessMode.WRITE,
+                           Map.of(),
+                           new RoutingContext(true, Map.of()));
+
+        final QuerySubscriber subscriber = new QuerySubscriber() {
+            int numberOfFields;
+            AnyValue[] record;
+            List<AnyValue[]> records = new LinkedList<>();
+            Throwable throwable;
+            QueryStatistics statistics;
+
+            @Override
+            public void onResult(int numberOfFields) throws Exception {
+                this.numberOfFields = numberOfFields;
+            }
+
+            @Override
+            public void onRecord() throws Exception {
+                record = new AnyValue[numberOfFields];
+            }
+
+            @Override
+            public void onField(int offset, AnyValue value) throws Exception {
+                record[offset] = value;
+            }
+
+            @Override
+            public void onRecordCompleted() throws Exception {
+                records.add(record);
+                record = null;
+            }
+
+            @Override
+            public void onError(Throwable throwable) throws Exception {
+                this.throwable = throwable;
+            }
+
+            @Override
+            public void onResultCompleted( QueryStatistics statistics) {
+                this.statistics = statistics;
+            }
+        };
+
+        try (Transaction t1 = tx.beginTx()) {
             T result = action.apply(tx);
             tx.commit();
             return result;
