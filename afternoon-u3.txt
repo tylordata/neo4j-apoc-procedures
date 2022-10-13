@@ -1,0 +1,6 @@
+8ccd65b6 (suspected graphql user)
+
+SHOW FUNCTIONS
+YIELD name
+WHERE name IN [\"apoc.util.validatePredicate\", \"apoc.cypher.runFirstColumnSingle\", \"apoc.cypher.runFirstColumnMany\", \"apoc.date.convertFormat\"]
+RETURN collect(name) as functions

@@ -1,0 +1,23 @@
+ccd0623b (suspected graphql user)
+
+MATCH
+    (`organisation`:`Organisation` {id:$id})
+RETURN
+    `organisation` {
+        .adaptId,
+        .id,
+        .logoId,
+        .setupCompleted,
+        hasCompletedGhgCalculator: apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:RELATES_TO]-(ir:InfoRequest {questionnaireId: \u00270afa70a3-0757-4ca2-afce-4461bc8ef092\u0027, submitted: true})\nRETURN COUNT(ir) \u003e 0\", {this: organisation}, false),
+        .suppliersModule ,
+        .isSixDEnabled
+    } AS `organisation`
+
+MATCH
+    (`organisation`:`Organisation` {id:$id})
+RETURN `organisation` {
+    .id,
+    submittedInfoRequestsWithQuestionGroupsCount: apoc.cypher.runFirstColumn(
+        \"MATCH (this)\u003c-[:REQUESTED_BY]-(ir:InfoRequest {submitted: true})-[:RELATES_TO]-\u003e(e:Entity)\n
+        WHERE ir.questionnaireId \u003d \\\"74ad5012-fb83-467c-896c-9b78331f960e\\\"\n
+        RETURN COUNT(ir);\", {this: organisation}, false)} AS `organisation`"

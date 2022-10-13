@@ -1,0 +1,19 @@
+b0778029
+
+
+MATCH 
+    (navigateur:EmpreinteNavigateur)-[token:CONNEXION_TOKEN]->()
+WHERE 
+    navigateur.empreinte = $fingerprint
+    AND token.token = $token
+WITH
+    COUNT(token) > 0 AS existe
+CALL 
+    apoc.do.when(
+        existe = false, 
+        $create,
+        'RETURN null AS token',
+        { fingerprint: $fingerprint, id_user: $id_user, timestamp: $timestamp, tokenVal: $token}
+    ) YIELD value
+RETURN
+    value.token.token AS token

@@ -1,0 +1,18 @@
+331b470b (suspected graphql user)
+
+MATCH
+    (`organisation`:`Organisation` {id:$id})
+RETURN
+    `organisation` {
+        .adaptId ,
+        .id ,
+        .logoId ,
+        .setupCompleted ,
+        hasCompletedGhgCalculator: apoc.cypher.runFirstColumn(
+            \"MATCH (this)<-[:RELATES_TO]-(ir:InfoRequest {questionnaireId: '0afa70a3-0757-4ca2-afce-4461bc8ef092', submitted: true})
+            RETURN COUNT(ir) > 0\",
+            {this: organisation},
+            false),
+        .suppliersModule ,
+        .isSixDEnabled
+    } AS `organisation`

@@ -1,0 +1,13 @@
+d033cc70
+
+WITH
+    apoc.cypher.runFirstColumn(
+        \"Match (k:Kriya)
+        RETURN count(k)\",
+        {offset:$`offset`, first:$`first`, cypherParams: $cypherParams},
+        True
+    ) AS x
+UNWIND
+    x AS `int`
+RETURN
+    `int`

@@ -1,0 +1,136 @@
+ccd0623b
+
+
+
+MATCH
+    r=((o:Entity {id: $id})-[:OWNS *0..]->(e:Entity))
+WHERE
+    length(r) <= $maxDepth
+WITH
+    e
+CALL
+    apoc.when($includeTenants, \"OPTIONAL MATCH (e)-[:HAS_ZONE]->(:Zone)-[:HAS_TENANT]->(t:Organisation) RETURN t\", \"\", {e:e}) YIELD value
+WITH
+    e, COLLECT(value.t) as tenants
+WITH
+    e + tenants as entities, tenants
+UNWIND
+    entities AS c
+WITH
+    DISTINCT c, tenants
+RETURN
+    c.adaptId as adaptId,
+    c.name as name,
+    c.id as id,
+    c.groupType as groupType
+    CASE
+        WHEN c in tenants THEN true
+        ELSE false
+    END as isTenant,
+    head( [ label IN labels(c) WHERE label IN ['Organisation', 'Building', 'Fund']]) as FRAGMENT_TYPE
+
+
+
+CALL
+    apoc.merge.node($labels, $matchProperties, $createProperties, $updateProperties) YIELD node
+WITH
+    node, apoc.create.uuid() AS uuid
+CALL
+    apoc.do.when(
+        node.id IS null,
+        \"SET node.id = $id RETURN node\",
+        \"RETURN node\",
+        {id: uuid, node: node}
+    ) YIELD value
+CALL
+    apoc.do.when(
+        node.createdAt IS null,
+        \"SET node.createdAt = datetime() RETURN node\",
+        \"RETURN node\",
+        {id: uuid, node: value.node}) YIELD value as value2
+SET
+    value2.node.updatedAt = datetime()
+RETURN
+    value2.node as node
+
+
+
+
+MATCH
+    (u:User {userServiceId: $userServiceId}), (a:Entity {id: $entityId}), (p:Organisation {id: $parentOrganisationId})
+WITH
+    u, p, a, labels(a) as entity_labels
+CALL
+    apoc.do.when(
+        NOT 'Organisation' IN entity_labels,
+        \"CALL apoc.merge.relationship(u, 'ASSIGNED_TO', {}, {}, p) YIELD rel RETURN rel\",
+        \"\",
+        {entity_labels: entity_labels, p:p, u:u}
+    ) YIELD value
+With
+    u, a
+CALL
+    apoc.create.relationship(u, $relationType, {parentOrganisationId: $parentOrganisationId}, a) YIELD rel
+RETURN u
+
+
+
+
+MATCH
+    (o:Organisation {id:$id})<-[r]-(u:User {userServiceId: $userServiceId})
+WITH
+    type(r) AS label, o, u
+CALL
+    apoc.when(
+        label='ASSIGNED_TO',
+        \"MATCH (o)-[:OWNS *0..]->(e:Entity)<-[:CAN_EDIT|CAN_REPORT|CAN_VIEW]-(u), (e)-[:OWNS *0..]->(f:Entity) RETURN (f) AS entities\",
+        \"MATCH (o)-[:OWNS *0..]->(e:Entity) RETURN DISTINCT e AS entities\",
+        {o:o, u:u}
+    ) YIELD value
+WITH
+    value.entities AS e
+CALL
+    apoc.when(
+        $includeTenants,
+        \"OPTIONAL MATCH (e)-[:HAS_ZONE]->(:Zone)-[:HAS_TENANT]->(t:Organisation) RETURN t\",
+        \"\",
+        {e:e}
+    ) YIELD value
+WITH
+    e, COLLECT(value.t) as tenants
+WITH
+    e + tenants as entities, tenants
+UNWIND
+    entities AS c
+WITH
+    DISTINCT c, tenants
+RETURN
+    c.adaptId as adaptId,
+    c.name as name,
+    c.id as id,
+    c.groupType as groupType,
+    CASE
+        WHEN c in tenants THEN true
+        ELSE false
+    END as isTenant,
+    head( [ label IN labels(c) WHERE label IN ['Organisation', 'Building', 'Fund']]) as FRAGMENT_TYPE
+
+
+MATCH
+    (o {id:$id})
+WITH
+    o, [ propKey IN (keys(o)) WHERE NOT propKey IN ['id', 'createdAt', 'updatedAt']] as propertyKeys
+CALL apoc.do.when(
+  $deleteExistingProperties = true,
+  \"CALL apoc.create.removeProperties(o, propertyKeys) YIELD node RETURN node\",
+  \"\",
+  {propertyKeys: propertyKeys, o:o, deleteExistingProperties: $deleteExistingProperties}  
+) YIELD value
+CALL
+    apoc.create.setProperties(o, $keys, $properties)
+YIELD
+    node
+SET
+    o.updatedAt = datetime()
+RETURN
+    o

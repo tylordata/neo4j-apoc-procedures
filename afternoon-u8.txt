@@ -1,0 +1,32 @@
+8de3dbba (confirmed graphql user)
+
+
+    "head(logsForDb).source": "bolt-session	bolt	@neo4j/graphql/2.5.8		client/10.8.8.5:47406	server/10.8.14.27:17687>",
+    "head(logsForDb).query": "MATCH (this:User)
+WHERE this.email = $this_email
+
+WITH this
+OPTIONAL MATCH (this)-[this_coverImage0_delete0_relationship:COVER_IMAGE]->(this_coverImage0_delete0:RemoteImage)
+WITH this, collect(DISTINCT this_coverImage0_delete0) as this_coverImage0_delete0_to_delete
+FOREACH(x IN this_coverImage0_delete0_to_delete | DETACH DELETE x)
+WITH this
+CREATE (this_coverImage0_create0_node:RemoteImage)
+SET this_coverImage0_create0_node.id = randomUUID()
+SET this_coverImage0_create0_node.url = $this_coverImage0_create0_node_url
+MERGE (this)-[:COVER_IMAGE]->(this_coverImage0_create0_node)
+WITH this
+OPTIONAL MATCH (this)-[this_featuredContent0_delete0_relationship:FEATURED]->(this_featuredContent0_delete0:FeaturedContent)
+WITH this, collect(DISTINCT this_featuredContent0_delete0) as this_featuredContent0_delete0_to_delete
+FOREACH(x IN this_featuredContent0_delete0_to_delete | DETACH DELETE x)
+WITH this
+WITH this
+OPTIONAL MATCH (this)-[this_location0_delete0_relationship:HOME_LOCATION]->(this_location0_delete0:Location)
+WITH this, collect(DISTINCT this_location0_delete0) as this_location0_delete0_to_delete
+FOREACH(x IN this_location0_delete0_to_delete | DETACH DELETE x)
+
+RETURN this { .id, .active, createdAt: apoc.date.convertFormat(toString(this.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), .email, .shopifyId, .name, .username, .visibility, .description, coverImage: head([ (this)-[:COVER_IMAGE]->(this_coverImage:RemoteImage)   | this_coverImage { .id, .url } ]), profileImage: head([ (this)-[:PROFILE_IMAGE]->(this_profileImage:RemoteImage)   | this_profileImage { .id, .url } ]), featuredContent: [ (this)-[:FEATURED]->(this_featuredContent:FeaturedContent)   | this_featuredContent { .id, .url, .type } ], location: head([ (this)-[:HOME_LOCATION]->(this_location:Location)   | this_location { .id, .name, point: apoc.cypher.runFirstColumn('RETURN
+CASE this_location.point IS NOT NULL
+	WHEN true THEN { point: this_location.point }
+	ELSE NULL
+END AS result',{ this_location: this_location },false) } ]) } AS this"
+  },

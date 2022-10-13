@@ -1,0 +1,56 @@
+ "dbId": "2a960517",
+    "head(logsForDb).source": "bolt-session	bolt	neo4j-javascript/5.0.0		client/10.8.51.4:51026	server/10.8.29.14:17687>",
+    "head(logsForDb).query": "
+    MATCH (user:User { uuid: $userUuid })
+    MATCH (user)-[watched:WATCHED]->(video)-[:BELONGS_TO]->(show:Show)
+
+    // Limit to past 60 days of watch history.
+    WHERE duration.inDays(datetime({epochMillis: watched.timestamp}), datetime()).days < 60
+
+    // Limit to published shows.
+    AND show.published = true
+
+    // Limit to published videos.
+    AND video.published = true
+
+    // Limit to full-length content.
+    AND (video.type = 'episode' OR video.type = 'special')
+
+    // Order by most recent watched.
+    WITH show, video, watched
+    ORDER BY watched.timestamp DESC
+
+    // Get first result for each _Show_ watched.
+    WITH show, COLLECT(watched)[0] AS watched, COLLECT(video)[0] AS video
+
+    WHERE watched.percentage IS NOT NULL
+
+    CALL apoc.when(
+      watched.percentage >= $completedPercentage,
+
+      // When the video is considered completed, look for the next episode
+      // based on the completed episode's season and ordinal number.
+      \"MATCH (nextVideo:Video)-[:BELONGS_TO]->(nextVideoShow:Show)
+        WHERE nextVideoShow.uuid = show.uuid
+        AND nextVideo.type = 'episode'
+        AND (
+          (nextVideo.season = video.season AND nextVideo.ordinal > video.ordinal)
+          OR nextVideo.season > video.season
+        )
+      RETURN show AS fShow, nextVideo AS fVideo, NULL AS fWatched
+      ORDER BY fVideo.season ASC, fVideo.ordinal ASC
+      LIMIT 1\",
+
+      // When the video is not completed, return it as is.
+      \"RETURN show AS fShow, video AS fVideo, watched AS fWatched\",
+
+      {show: show, video: video, watched: watched}
+    ) YIELD value
+
+    RETURN
+      value.fShow.uuid as showUuid,
+      value.fShow.title as showTitle,
+      value.fVideo AS video,
+      value.fWatched AS watched
+    LIMIT $limit"
+  }

@@ -1,0 +1,166 @@
+2d771239 (suspect graphql user)
+
+
+    "head(logsForDb).source": "bolt-session	bolt	neo4j-javascript/4.4.6		client/10.8.2.7:49776	server/10.8.12.28:17687>",
+    "head(logsForDb).query": "MATCH (`learningPath`:`LearningPath` {userId:$userId, subjectAlias:$subjectAlias}) RETURN `learningPath` { .id ,currentUnitOrderable: head([ learningPath_currentUnitOrderable IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HEAD_OF_UP_NEXT]->(unit:UnitOrderable)-[:HAS_UP_NEXT*0..]->(next_units:UnitOrderable)-[:HAS_UNIT]->(:Unit {published: true})-[:HAS_LIVE_LESSON]->(content:Content)
+WHERE NOT (content)<-[:COMPLETED]-(:CompletedContent {userId: this.userId, contentId: content.id})
+    AND (next_units.hidden IS NULL OR next_units.hidden = false)
+    AND COALESCE(content.hidden, false) <> true
+RETURN DISTINCT next_units LIMIT 1\", {this: learningPath, cypherParams: $cypherParams}, true) | learningPath_currentUnitOrderable { .id ,unit: head([(`learningPath_currentUnitOrderable`)-[:`HAS_UNIT`]->(`learningPath_currentUnitOrderable_unit`:`Unit`) | `learningPath_currentUnitOrderable_unit` { .id , .imageUrl , .level , .title , .summary ,parentContentTopic: [(`learningPath_currentUnitOrderable_unit`)<-[:`CONTENT_TOPIC_HAS_UNIT`]-(`learningPath_currentUnitOrderable_unit_parentContentTopic`:`ContentTopic`) | `learningPath_currentUnitOrderable_unit_parentContentTopic` { .id , .version }] ,liveLesson: head([learningPath_currentUnitOrderable_unit_liveLesson IN [ learningPath_currentUnitOrderable_unit_liveLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_LIVE_LESSON]->(content:Content) RETURN content\", {this: learningPath_currentUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_currentUnitOrderable_unit_liveLesson)) | learningPath_currentUnitOrderable_unit_liveLesson] | head([`learningPath_currentUnitOrderable_unit_liveLesson` IN [`learningPath_currentUnitOrderable_unit_liveLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_currentUnitOrderable_unit_liveLesson`) | `learningPath_currentUnitOrderable_unit_liveLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_currentUnitOrderable_unit_liveLesson, cypherParams: $cypherParams}, false) }])]) ,inLesson: [learningPath_currentUnitOrderable_unit_inLesson IN [ learningPath_currentUnitOrderable_unit_inLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[rel:HAS_LIVE_LESSON]->(content:Content)
+WHERE COALESCE(content.hidden, false) <> true
+RETURN content
+ORDER BY rel.priority\", {this: learningPath_currentUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_currentUnitOrderable_unit_inLesson)) | learningPath_currentUnitOrderable_unit_inLesson] | head([`learningPath_currentUnitOrderable_unit_inLesson` IN [`learningPath_currentUnitOrderable_unit_inLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_currentUnitOrderable_unit_inLesson`) | `learningPath_currentUnitOrderable_unit_inLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_currentUnitOrderable_unit_inLesson, cypherParams: $cypherParams}, false) }])] ,preLesson: head([learningPath_currentUnitOrderable_unit_preLesson IN [ learningPath_currentUnitOrderable_unit_preLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_PRE_LESSON]->(content:Content) RETURN content\", {this: learningPath_currentUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_currentUnitOrderable_unit_preLesson)) | learningPath_currentUnitOrderable_unit_preLesson] | head([`learningPath_currentUnitOrderable_unit_preLesson` IN [`learningPath_currentUnitOrderable_unit_preLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_currentUnitOrderable_unit_preLesson`) | `learningPath_currentUnitOrderable_unit_preLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id  }])]) ,postLesson: head([learningPath_currentUnitOrderable_unit_postLesson IN [ learningPath_currentUnitOrderable_unit_postLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_POST_LESSON]->(content:Content) RETURN content\", {this: learningPath_currentUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_currentUnitOrderable_unit_postLesson)) | learningPath_currentUnitOrderable_unit_postLesson] | head([`learningPath_currentUnitOrderable_unit_postLesson` IN [`learningPath_currentUnitOrderable_unit_postLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_currentUnitOrderable_unit_postLesson`) | `learningPath_currentUnitOrderable_unit_postLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id  }])]) ,selfLearning: [learningPath_currentUnitOrderable_unit_selfLearning IN [ learningPath_currentUnitOrderable_unit_selfLearning IN apoc.cypher.runFirstColumn(\"MATCH (this)-[rel:HAS_SELF_LEARNING]->(content:Content)
+WHERE COALESCE(content.hidden, false) <> true
+RETURN content
+ORDER BY rel.priority\", {this: learningPath_currentUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_currentUnitOrderable_unit_selfLearning)) | learningPath_currentUnitOrderable_unit_selfLearning] | head([`learningPath_currentUnitOrderable_unit_selfLearning` IN [`learningPath_currentUnitOrderable_unit_selfLearning`] WHERE \"CurriculumNode\" IN labels(`learningPath_currentUnitOrderable_unit_selfLearning`) | `learningPath_currentUnitOrderable_unit_selfLearning` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_currentUnitOrderable_unit_selfLearning, cypherParams: $cypherParams}, false) }])] }]) }]) ,upNext: [ learningPath_upNext IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HEAD_OF_UP_NEXT]->(unit:UnitOrderable)-[:HAS_UP_NEXT*0..]->(next_units:UnitOrderable)-[:HAS_UNIT]->(:Unit {published: true})-[:HAS_LIVE_LESSON]->(content:Content)
+WHERE NOT (content)<-[:COMPLETED]-(:CompletedContent {userId: this.userId, contentId: content.id})
+    AND (next_units.hidden IS NULL OR next_units.hidden = false)
+    AND COALESCE(content.hidden, false) <> true
+RETURN DISTINCT next_units SKIP 1\", {this: learningPath, cypherParams: $cypherParams, first: $1_first, offset: $1_offset}, true) | learningPath_upNext { .id ,unit: head([(`learningPath_upNext`)-[:`HAS_UNIT`]->(`learningPath_upNext_unit`:`Unit`) | `learningPath_upNext_unit` { .id , .imageUrl , .level , .title , .summary ,parentContentTopic: [(`learningPath_upNext_unit`)<-[:`CONTENT_TOPIC_HAS_UNIT`]-(`learningPath_upNext_unit_parentContentTopic`:`ContentTopic`) | `learningPath_upNext_unit_parentContentTopic` { .id , .version }] ,liveLesson: head([learningPath_upNext_unit_liveLesson IN [ learningPath_upNext_unit_liveLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_LIVE_LESSON]->(content:Content) RETURN content\", {this: learningPath_upNext_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_upNext_unit_liveLesson)) | learningPath_upNext_unit_liveLesson] | head([`learningPath_upNext_unit_liveLesson` IN [`learningPath_upNext_unit_liveLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_upNext_unit_liveLesson`) | `learningPath_upNext_unit_liveLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_upNext_unit_liveLesson, cypherParams: $cypherParams}, false) }])]) ,inLesson: [learningPath_upNext_unit_inLesson IN [ learningPath_upNext_unit_inLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[rel:HAS_LIVE_LESSON]->(content:Content)
+WHERE COALESCE(content.hidden, false) <> true
+RETURN content
+ORDER BY rel.priority\", {this: learningPath_upNext_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_upNext_unit_inLesson)) | learningPath_upNext_unit_inLesson] | head([`learningPath_upNext_unit_inLesson` IN [`learningPath_upNext_unit_inLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_upNext_unit_inLesson`) | `learningPath_upNext_unit_inLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_upNext_unit_inLesson, cypherParams: $cypherParams}, false) }])] ,preLesson: head([learningPath_upNext_unit_preLesson IN [ learningPath_upNext_unit_preLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_PRE_LESSON]->(content:Content) RETURN content\", {this: learningPath_upNext_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_upNext_unit_preLesson)) | learningPath_upNext_unit_preLesson] | head([`learningPath_upNext_unit_preLesson` IN [`learningPath_upNext_unit_preLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_upNext_unit_preLesson`) | `learningPath_upNext_unit_preLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id  }])]) ,postLesson: head([learningPath_upNext_unit_postLesson IN [ learningPath_upNext_unit_postLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_POST_LESSON]->(content:Content) RETURN content\", {this: learningPath_upNext_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_upNext_unit_postLesson)) | learningPath_upNext_unit_postLesson] | head([`learningPath_upNext_unit_postLesson` IN [`learningPath_upNext_unit_postLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_upNext_unit_postLesson`) | `learningPath_upNext_unit_postLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id  }])]) ,selfLearning: [learningPath_upNext_unit_selfLearning IN [ learningPath_upNext_unit_selfLearning IN apoc.cypher.runFirstColumn(\"MATCH (this)-[rel:HAS_SELF_LEARNING]->(content:Content)
+WHERE COALESCE(content.hidden, false) <> true
+RETURN content
+ORDER BY rel.priority\", {this: learningPath_upNext_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_upNext_unit_selfLearning)) | learningPath_upNext_unit_selfLearning] | head([`learningPath_upNext_unit_selfLearning` IN [`learningPath_upNext_unit_selfLearning`] WHERE \"CurriculumNode\" IN labels(`learningPath_upNext_unit_selfLearning`) | `learningPath_upNext_unit_selfLearning` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_upNext_unit_selfLearning, cypherParams: $cypherParams}, false) }])] }]) }][0..5] ,lastCompletedUnitOrderable: head([ learningPath_lastCompletedUnitOrderable IN apoc.cypher.runFirstColumn(\"// LiveLesson can have 2+ CurriculumNode.
+// When we query completed Units we get Units with at least one completed CurriculumNode
+// instead of with all completed CurriculumNodes.
+// So we find all not completed UnitIDs and exclude from at least on completed query.
+// It's unefficient but I don't know to rewrite this Cypher.
+
+MATCH (this)-[:HEAD_OF_UP_NEXT]->(unit:UnitOrderable)-[:HAS_UP_NEXT*0..]->(next_units:UnitOrderable)-[:HAS_UNIT]->(:Unit {published: true})-[:HAS_LIVE_LESSON]->(not_content:Content)
+WHERE NOT (not_content)<-[:COMPLETED]-(:CompletedContent {userId: this.userId, contentId: not_content.id})
+
+WITH collect(next_units.id) as upNextIDs, this
+
+MATCH (this)-[:HEAD_OF_UP_NEXT]->(unit:UnitOrderable)-[:HAS_UP_NEXT*0..]->(next_units:UnitOrderable)-[:HAS_UNIT]->(:Unit {published: true})-[:HAS_LIVE_LESSON]->(content:Content)
+WHERE (content)<-[:COMPLETED]-(:CompletedContent {userId: this.userId, contentId: content.id})
+  AND NOT next_units.id IN upNextIDs
+  AND (next_units.hidden IS NULL OR next_units.hidden = false)
+
+WITH collect(next_units) as completedUnits
+RETURN completedUnits[size(completedUnits) - 1]\", {this: learningPath, cypherParams: $cypherParams}, true) | learningPath_lastCompletedUnitOrderable { .id ,unit: head([(`learningPath_lastCompletedUnitOrderable`)-[:`HAS_UNIT`]->(`learningPath_lastCompletedUnitOrderable_unit`:`Unit`) | `learningPath_lastCompletedUnitOrderable_unit` { .id , .imageUrl , .level , .title , .summary ,parentContentTopic: [(`learningPath_lastCompletedUnitOrderable_unit`)<-[:`CONTENT_TOPIC_HAS_UNIT`]-(`learningPath_lastCompletedUnitOrderable_unit_parentContentTopic`:`ContentTopic`) | `learningPath_lastCompletedUnitOrderable_unit_parentContentTopic` { .id , .version }] ,liveLesson: head([learningPath_lastCompletedUnitOrderable_unit_liveLesson IN [ learningPath_lastCompletedUnitOrderable_unit_liveLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_LIVE_LESSON]->(content:Content) RETURN content\", {this: learningPath_lastCompletedUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_lastCompletedUnitOrderable_unit_liveLesson)) | learningPath_lastCompletedUnitOrderable_unit_liveLesson] | head([`learningPath_lastCompletedUnitOrderable_unit_liveLesson` IN [`learningPath_lastCompletedUnitOrderable_unit_liveLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_lastCompletedUnitOrderable_unit_liveLesson`) | `learningPath_lastCompletedUnitOrderable_unit_liveLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_lastCompletedUnitOrderable_unit_liveLesson, cypherParams: $cypherParams}, false) }])]) ,inLesson: [learningPath_lastCompletedUnitOrderable_unit_inLesson IN [ learningPath_lastCompletedUnitOrderable_unit_inLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[rel:HAS_LIVE_LESSON]->(content:Content)
+WHERE COALESCE(content.hidden, false) <> true
+RETURN content
+ORDER BY rel.priority\", {this: learningPath_lastCompletedUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_lastCompletedUnitOrderable_unit_inLesson)) | learningPath_lastCompletedUnitOrderable_unit_inLesson] | head([`learningPath_lastCompletedUnitOrderable_unit_inLesson` IN [`learningPath_lastCompletedUnitOrderable_unit_inLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_lastCompletedUnitOrderable_unit_inLesson`) | `learningPath_lastCompletedUnitOrderable_unit_inLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_lastCompletedUnitOrderable_unit_inLesson, cypherParams: $cypherParams}, false) }])] ,preLesson: head([learningPath_lastCompletedUnitOrderable_unit_preLesson IN [ learningPath_lastCompletedUnitOrderable_unit_preLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_PRE_LESSON]->(content:Content) RETURN content\", {this: learningPath_lastCompletedUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_lastCompletedUnitOrderable_unit_preLesson)) | learningPath_lastCompletedUnitOrderable_unit_preLesson] | head([`learningPath_lastCompletedUnitOrderable_unit_preLesson` IN [`learningPath_lastCompletedUnitOrderable_unit_preLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_lastCompletedUnitOrderable_unit_preLesson`) | `learningPath_lastCompletedUnitOrderable_unit_preLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id  }])]) ,postLesson: head([learningPath_lastCompletedUnitOrderable_unit_postLesson IN [ learningPath_lastCompletedUnitOrderable_unit_postLesson IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_POST_LESSON]->(content:Content) RETURN content\", {this: learningPath_lastCompletedUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_lastCompletedUnitOrderable_unit_postLesson)) | learningPath_lastCompletedUnitOrderable_unit_postLesson] | head([`learningPath_lastCompletedUnitOrderable_unit_postLesson` IN [`learningPath_lastCompletedUnitOrderable_unit_postLesson`] WHERE \"CurriculumNode\" IN labels(`learningPath_lastCompletedUnitOrderable_unit_postLesson`) | `learningPath_lastCompletedUnitOrderable_unit_postLesson` { FRAGMENT_TYPE: \"CurriculumNode\",  .id  }])]) ,selfLearning: [learningPath_lastCompletedUnitOrderable_unit_selfLearning IN [ learningPath_lastCompletedUnitOrderable_unit_selfLearning IN apoc.cypher.runFirstColumn(\"MATCH (this)-[rel:HAS_SELF_LEARNING]->(content:Content)
+WHERE COALESCE(content.hidden, false) <> true
+RETURN content
+ORDER BY rel.priority\", {this: learningPath_lastCompletedUnitOrderable_unit, cypherParams: $cypherParams}, true) WHERE (\"CurriculumNode\" IN labels(learningPath_lastCompletedUnitOrderable_unit_selfLearning)) | learningPath_lastCompletedUnitOrderable_unit_selfLearning] | head([`learningPath_lastCompletedUnitOrderable_unit_selfLearning` IN [`learningPath_lastCompletedUnitOrderable_unit_selfLearning`] WHERE \"CurriculumNode\" IN labels(`learningPath_lastCompletedUnitOrderable_unit_selfLearning`) | `learningPath_lastCompletedUnitOrderable_unit_selfLearning` { FRAGMENT_TYPE: \"CurriculumNode\",  .id ,contentType: apoc.cypher.runFirstColumn(\"MATCH (this)<-[rel:HAS_SELF_LEARNING|HAS_LIVE_LESSON|HAS_TEST|HAS_CONVERSATION_STARTER|GRAMMAR_RULE_HAS_CONTENT]-()
+RETURN
+    CASE type(rel)
+        WHEN 'HAS_SELF_LEARNING'
+            THEN 'SELF_STUDY'
+        WHEN 'HAS_LIVE_LESSON'
+            THEN 'LIVE_LESSON'
+        WHEN 'HAS_TEST'
+            THEN 'TEST'
+        WHEN 'HAS_CONVERSATION_STARTER'
+            THEN 'CONVERSATION_STARTER'
+        WHEN 'GRAMMAR_RULE_HAS_CONTENT'
+            THEN 'GRAMMAR_RULE'
+    END\", {this: learningPath_lastCompletedUnitOrderable_unit_selfLearning, cypherParams: $cypherParams}, false) }])] }]) }]) } AS `learningPath`"
+  },

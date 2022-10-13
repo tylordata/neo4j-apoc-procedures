@@ -1,0 +1,42 @@
+2f8ae5c1
+
+MATCH
+    (user:User { uuid: $userUuid })
+MATCH
+    (user)-[watched:WATCHED]->(video)-[:BELONGS_TO]->(show:Show)
+WHERE
+    duration.inDays(datetime({epochMillis: watched.timestamp}), datetime()).days < 60
+    AND show.published = true
+    AND video.published = true
+    AND (video.type = 'episode' OR video.type = 'special')
+WITH
+    show, video, watched
+ORDER BY
+    watched.timestamp DESC
+WITH
+    show, COLLECT(watched)[0] AS watched, COLLECT(video)[0] AS video
+WHERE
+    watched.percentage IS NOT NULL
+CALL
+    apoc.when(
+        watched.percentage >= $completedPercentage,
+        \"MATCH (nextVideo: Video)-[:BELONGS_TO]->(nextVideoShow:Show)
+        WHERE nextVideoShow.uuid = show.uuid
+        AND nextVideo.type = 'episode'
+        AND (
+          (nextVideo.season = video.season AND nextVideo.ordinal > video.ordinal)
+          OR nextVideo.season > video.season
+        )
+        RETURN show AS fShow, nextVideo AS fVideo, NULL AS fWatched
+        ORDER BY fVideo.season ASC, fVideo.ordinal ASC
+        LIMIT 1\",
+        \"RETURN show AS fShow, video AS fVideo, watched AS fWatched\",
+        {show: show, video: video, watched: watched}
+    ) YIELD value
+RETURN
+  value.fShow.uuid as showUuid,
+  value.fShow.title as showTitle,
+  value.fVideo AS video,
+  value.fWatched AS watched
+LIMIT
+    $limit

@@ -1,0 +1,213 @@
+1a7ea6fe (confirmed graphql user)
+
+
+bolt-session	bolt	neo4j-javascript/4.4.8		client/10.8.8.5:38092	server/10.8.23.4:17687
+
+
+CALL
+    apoc.util.validate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated = true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0])
+
+                WITH apoc.cypher.runFirstColumn(\"MATCH (e:Employee { employeeId: $auth.jwt.sub }) RETURN e\", {auth: $auth}, false) as x
+                UNWIND x as this
+                WITH this
+
+CALL {
+WITH this
+MATCH (this)-[this_knows_relationship:KNOWS]->(this_skill:Skill)
+WITH collect({ proficiency: this_knows_relationship.proficiency, motivation: this_knows_relationship.motivation, isCoreSkill: this_knows_relationship.isCoreSkill, createdAt: apoc.date.convertFormat(toString(this_knows_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_knows_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { skillId: this_skill.skillId, name: this_skill.name, createdAt: apoc.date.convertFormat(toString(this_skill.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_skill.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS skillsConnection
+}
+CALL {
+WITH this
+MATCH (this)-[this_belongs_relationship:BELONGS]->(this_team:Team)
+WITH collect({ role: this_belongs_relationship.role, from: apoc.date.convertFormat(toString(this_belongs_relationship.from), \"iso_zoned_date_time\", \"iso_offset_date_time\"), to: apoc.date.convertFormat(toString(this_belongs_relationship.to), \"iso_zoned_date_time\", \"iso_offset_date_time\"), allocation: this_belongs_relationship.allocation, proficiency: this_belongs_relationship.proficiency, motivation: this_belongs_relationship.motivation, createdAt: apoc.date.convertFormat(toString(this_belongs_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_belongs_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { teamId: this_team.teamId, name: this_team.name, createdAt: apoc.date.convertFormat(toString(this_team.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_team.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS teamsConnection
+}
+CALL {
+WITH this
+MATCH (this)-[this_participates_relationship:PARTICIPATES]->(this_project:Project)
+WITH collect({ role: this_participates_relationship.role, from: apoc.date.convertFormat(toString(this_participates_relationship.from), \"iso_zoned_date_time\", \"iso_offset_date_time\"), to: apoc.date.convertFormat(toString(this_participates_relationship.to), \"iso_zoned_date_time\", \"iso_offset_date_time\"), allocation: this_participates_relationship.allocation, proficiency: this_participates_relationship.proficiency, motivation: this_participates_relationship.motivation, createdAt: apoc.date.convertFormat(toString(this_participates_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_participates_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { projectId: this_project.projectId, name: this_project.name, createdAt: apoc.date.convertFormat(toString(this_project.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_project.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS projectsConnection
+}
+CALL {
+WITH this
+MATCH (this)-[this_manages_relationship:MANAGES]->(this_customer:Customer)
+WITH collect({ role: this_manages_relationship.role, from: apoc.date.convertFormat(toString(this_manages_relationship.from), \"iso_zoned_date_time\", \"iso_offset_date_time\"), to: apoc.date.convertFormat(toString(this_manages_relationship.to), \"iso_zoned_date_time\", \"iso_offset_date_time\"), allocation: this_manages_relationship.allocation, proficiency: this_manages_relationship.proficiency, motivation: this_manages_relationship.motivation, createdAt: apoc.date.convertFormat(toString(this_manages_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_manages_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { customerId: this_customer.customerId, name: this_customer.name, logo: this_customer.logo, icon: this_customer.icon, createdAt: apoc.date.convertFormat(toString(this_customer.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_customer.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS customersConnection
+}
+CALL {
+WITH this
+MATCH (this)-[this_company_relationship:COMPANY]->(this_company:Company)
+WITH collect({ node: { id: this_company.id, name: this_company.name, description: this_company.description } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS companyConnection
+}
+CALL {
+WITH this
+MATCH (this)-[this_offering_relationship:OFFERING]->(this_offering:Offering)
+WITH collect({ node: { id: this_offering.id, name: this_offering.name, description: this_offering.description } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS offeringConnection
+}
+CALL {
+WITH this
+MATCH (this)<-[this_speculated_relationship:SPECULATED]-(this_opening:Opening)
+WITH collect({ role: this_speculated_relationship.role, from: apoc.date.convertFormat(toString(this_speculated_relationship.from), \"iso_zoned_date_time\", \"iso_offset_date_time\"), to: apoc.date.convertFormat(toString(this_speculated_relationship.to), \"iso_zoned_date_time\", \"iso_offset_date_time\"), allocation: this_speculated_relationship.allocation, node: { id: this_opening.id, description: this_opening.description, createdAt: apoc.date.convertFormat(toString(this_opening.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_opening.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS speculatedForConnection
+}
+CALL {
+WITH this
+MATCH (this)<-[this_owned_by_relationship:OWNED_BY]-(this_opportunity:Opportunity)
+WITH collect({ node: { opportunityId: this_opportunity.opportunityId, name: this_opportunity.name, createdAt: apoc.date.convertFormat(toString(this_opportunity.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_opportunity.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS ownedOpportunitiesConnection
+}
+CALL {
+WITH this
+MATCH (this)<-[this_sold_by_relationship:SOLD_BY]-(this_opportunity:Opportunity)
+WITH collect({ node: { opportunityId: this_opportunity.opportunityId, name: this_opportunity.name, createdAt: apoc.date.convertFormat(toString(this_opportunity.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_opportunity.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } }) AS edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS bidsConnection
+}
+CALL {
+WITH this
+CALL {
+WITH this
+MATCH (this)-[this_desires_relationship:DESIRES]->(this_Skill:Skill)
+WITH { description: this_desires_relationship.description, status: this_desires_relationship.status, interest: this_desires_relationship.interest, createdAt: apoc.date.convertFormat(toString(this_desires_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_desires_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Skill\", skillId: this_Skill.skillId, name: this_Skill.name, createdAt: apoc.date.convertFormat(toString(this_Skill.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Skill.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_desires_relationship:DESIRES]->(this_Customer:Customer)
+WITH { description: this_desires_relationship.description, status: this_desires_relationship.status, interest: this_desires_relationship.interest, createdAt: apoc.date.convertFormat(toString(this_desires_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_desires_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Customer\", customerId: this_Customer.customerId, name: this_Customer.name, logo: this_Customer.logo, createdAt: apoc.date.convertFormat(toString(this_Customer.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Customer.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_desires_relationship:DESIRES]->(this_Strategy:Strategy)
+WITH { description: this_desires_relationship.description, status: this_desires_relationship.status, interest: this_desires_relationship.interest, createdAt: apoc.date.convertFormat(toString(this_desires_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_desires_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Strategy\", strategyId: this_Strategy.strategyId, name: this_Strategy.name, createdAt: apoc.date.convertFormat(toString(this_Strategy.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Strategy.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+}
+WITH collect(edge) as edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS desiresConnection
+}
+CALL {
+WITH this
+CALL {
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Employee:Employee)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Employee\", employeeId: this_Employee.employeeId, firstName: this_Employee.firstName, lastName: this_Employee.lastName, name: this_Employee.name, avatar: this_Employee.avatar, startDate: apoc.date.convertFormat(toString(this_Employee.startDate), \"iso_zoned_date_time\", \"iso_offset_date_time\"), createdAt: apoc.date.convertFormat(toString(this_Employee.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Employee.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Skill:Skill)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Skill\", skillId: this_Skill.skillId, name: this_Skill.name, createdAt: apoc.date.convertFormat(toString(this_Skill.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Skill.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Team:Team)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Team\", teamId: this_Team.teamId, name: this_Team.name, createdAt: apoc.date.convertFormat(toString(this_Team.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Team.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Customer:Customer)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Customer\", customerId: this_Customer.customerId, name: this_Customer.name, logo: this_Customer.logo, createdAt: apoc.date.convertFormat(toString(this_Customer.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Customer.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Project:Project)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Project\", projectId: this_Project.projectId, name: this_Project.name, createdAt: apoc.date.convertFormat(toString(this_Project.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Project.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Opportunity:Opportunity)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Opportunity\", opportunityId: this_Opportunity.opportunityId, name: this_Opportunity.name, createdAt: apoc.date.convertFormat(toString(this_Opportunity.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Opportunity.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Opening:Opening)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Opening\", id: this_Opening.id, description: this_Opening.description, createdAt: apoc.date.convertFormat(toString(this_Opening.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Opening.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Offering:Offering)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Offering\", id: this_Offering.id, name: this_Offering.name, createdAt: apoc.date.convertFormat(toString(this_Offering.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Offering.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Company:Company)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Company\", id: this_Company.id, name: this_Company.name, createdAt: apoc.date.convertFormat(toString(this_Company.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Company.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Help:Help)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Help\", helpId: this_Help.helpId, topic: this_Help.topic, createdAt: apoc.date.convertFormat(toString(this_Help.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Help.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Lead:Lead)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Lead\", leadId: this_Lead.leadId, name: this_Lead.name, createdAt: apoc.date.convertFormat(toString(this_Lead.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Lead.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Strategy:Strategy)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Strategy\", strategyId: this_Strategy.strategyId, name: this_Strategy.name, createdAt: apoc.date.convertFormat(toString(this_Strategy.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Strategy.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_GamePlan:GamePlan)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"GamePlan\", gameplanId: this_GamePlan.gameplanId, name: this_GamePlan.name, createdAt: apoc.date.convertFormat(toString(this_GamePlan.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_GamePlan.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_KeyResult:KeyResult)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"KeyResult\" } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Objective:Objective)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Objective\", id: this_Objective.id, name: this_Objective.name, createdAt: apoc.date.convertFormat(toString(this_Objective.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_Objective.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_Milestone:Milestone)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"Milestone\" } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_GrowthPlan:GrowthPlan)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"GrowthPlan\" } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_InsightRequest:InsightRequest)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"InsightRequest\", id: this_InsightRequest.id, name: this_InsightRequest.name, createdAt: apoc.date.convertFormat(toString(this_InsightRequest.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_InsightRequest.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+UNION
+WITH this
+MATCH (this)-[this_likes_relationship:LIKES]->(this_InsightAnswer:InsightAnswer)
+WITH { createdAt: apoc.date.convertFormat(toString(this_likes_relationship.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_likes_relationship.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), node: { __resolveType: \"InsightAnswer\", id: this_InsightAnswer.id, answer: this_InsightAnswer.answer, createdAt: apoc.date.convertFormat(toString(this_InsightAnswer.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this_InsightAnswer.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } } AS edge
+RETURN edge
+}
+WITH collect(edge) as edges
+UNWIND edges as edge
+WITH collect(edge) AS edges, size(collect(edge)) AS totalCount
+RETURN { edges: edges, totalCount: totalCount } AS likesConnection
+}
+RETURN this { .employeeId, .firstName, .lastName, .avatar, .name, .email, .description, .title, .roles, .targetProjectAllocation, .phone, .country, .office, rotation: apoc.date.convertFormat(toString(this.rotation), \"iso_zoned_date_time\", \"iso_offset_date_time\"), .rotationDescription, .dream, .githubHandle, .linkedinHandle, .twitterHandle, .stackOverflowHandle, .slackHandle, created: apoc.date.convertFormat(toString(this.created), \"iso_zoned_date_time\", \"iso_offset_date_time\"), startDate: apoc.date.convertFormat(toString(this.startDate), \"iso_zoned_date_time\", \"iso_offset_date_time\"), endDate: apoc.date.convertFormat(toString(this.endDate), \"iso_zoned_date_time\", \"iso_offset_date_time\"), closed: apoc.date.convertFormat(toString(this.closed), \"iso_zoned_date_time\", \"iso_offset_date_time\"), createdAt: apoc.date.convertFormat(toString(this.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), updatedAt: apoc.date.convertFormat(toString(this.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"), skillsConnection, teamsConnection, projectsConnection, customersConnection, companyConnection, offeringConnection, speculatedForConnection, ownedOpportunitiesConnection, bidsConnection, desiresConnection, likesConnection } AS this"
+  },

@@ -1,0 +1,12 @@
+b7fb3e2a
+
+MATCH
+    (room:Room)
+WHERE
+    ALL(room_Hotel_Cond IN [(room)<-[:OWN_ROOM]-(room_Hotel) | (room_Hotel.name = $filterRoom_HotelName_EQ)] WHERE room_Hotel_Cond)
+    AND room.name = $filterRoomName_EQ
+RETURN
+    room {
+      states: apoc.cypher.runFirstColumnMany('WITH $this AS this MATCH (this)-[:IS_ROOM_STATE_OF]-(n:RoomState) RETURN n.name ORDER BY n.name', { this: room}),
+      .isFirstIn
+    } AS room

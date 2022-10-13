@@ -1,0 +1,56 @@
+4f436735
+
+// daniel
+    "head(logsForDb).source": "bolt-session	bolt	neo4j-kafka-connect-SINK/2.0.1		client/10.8.15.4:57990	server/10.8.16.5:17687>",
+    "head(logsForDb).query": "UNWIND $events AS event CALL apoc.do.when(event.op <> \"d\",
+ 'MERGE (a:Account {id: toString(event.after.account_id)}) SET
+ a += {
+ timestamp: timestamp()
+ }
+ WITH a, event
+ CALL apoc.do.when(event.after.company IS NULL OR event.after.company <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.company.text`: event.after.company} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value0
+ CALL apoc.do.when(event.after.company_kn IS NULL OR event.after.company_kn <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.company.kana`: event.after.company_kn} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value1
+ CALL apoc.do.when(event.after.section IS NULL OR event.after.section <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.section`: event.after.section} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value2
+ CALL apoc.do.when(event.after.title IS NULL OR event.after.title <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.title`: event.after.title} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value3
+ CALL apoc.do.when(event.after.name IS NULL OR event.after.name <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.name.text`: event.after.name} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value4
+ CALL apoc.do.when(event.after.name_kn IS NULL OR event.after.name_kn <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.name.kana`: event.after.name_kn} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value5
+ CALL apoc.do.when(event.after.address_country IS NULL OR event.after.address_country <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.address.country`: event.after.address_country} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value6
+ CALL apoc.do.when(event.after.address_zip IS NULL OR event.after.address_zip <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.address.zip`: event.after.address_zip} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value7
+ CALL apoc.do.when(event.after.address_prefecture IS NULL OR event.after.address_prefecture <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.address.prefecture`: event.after.address_prefecture} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value8
+ CALL apoc.do.when(event.after.address_city IS NULL OR event.after.address_city <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.address.city`: event.after.address_city} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value9
+ CALL apoc.do.when(event.after.tel IS NULL OR event.after.tel <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.phone`: event.after.tel} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value10
+ CALL apoc.do.when(event.after.fax IS NULL OR event.after.fax <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.fax`: event.after.fax} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value11
+ CALL apoc.do.when(event.after.email IS NULL OR event.after.email <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.email`: event.after.email} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value12
+ CALL apoc.do.when(event.after.email_other IS NULL OR event.after.email_other <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.emailOther`: event.after.email_other} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value13
+ CALL apoc.do.when(event.after.business_type IS NULL OR event.after.business_type <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.profile.businessType`: event.after.business_type} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value14
+ CALL apoc.do.when(event.after.industry_type IS NULL OR event.after.industry_type <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.profile.industryType`: event.after.industry_type} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value15
+ CALL apoc.do.when(event.after.capital IS NULL OR event.after.capital <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.profile.capital`: event.after.capital} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value16
+ CALL apoc.do.when(event.after.employee IS NULL OR event.after.employee <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.profile.employee`: event.after.employee} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value17
+ CALL apoc.do.when(event.after.url IS NULL OR event.after.url <> \"__debezium_unavailable_value\", \"SET a += {`primaryContact.profile.url`: event.after.url} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value18
+ CALL apoc.do.when(event.after.billing_contact_disabled IS NULL OR event.after.billing_contact_disabled <> \"__debezium_unavailable_value\", \"SET a += {billingContactDisabled: event.after.billing_contact_disabled} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value19
+ CALL apoc.do.when(event.after.billing_contact_company IS NULL OR event.after.billing_contact_company <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.company`: event.after.billing_contact_company} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value20
+ CALL apoc.do.when(event.after.billing_contact_section IS NULL OR event.after.billing_contact_section <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.section`: event.after.billing_contact_section} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value21
+ CALL apoc.do.when(event.after.billing_contact_name IS NULL OR event.after.billing_contact_name <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.name.text`: event.after.billing_contact_name} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value22
+ CALL apoc.do.when(event.after.billing_contact_name_kn IS NULL OR event.after.billing_contact_name_kn <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.name.kana`: event.after.billing_contact_name_kn} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value23
+ CALL apoc.do.when(event.after.billing_contact_address_country IS NULL OR event.after.billing_contact_address_country <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.address.country`: event.after.billing_contact_address_country} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value24
+ CALL apoc.do.when(event.after.billing_contact_address_zip IS NULL OR event.after.billing_contact_address_zip <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.address.zip`: event.after.billing_contact_address_zip} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value25
+ CALL apoc.do.when(event.after.billing_contact_address_prefecture IS NULL OR event.after.billing_contact_address_prefecture <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.address.prefecture`: event.after.billing_contact_address_prefecture} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value26
+ CALL apoc.do.when(event.after.billing_contact_address_city IS NULL OR event.after.billing_contact_address_city <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.address.city`: event.after.billing_contact_address_city} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value27
+ CALL apoc.do.when(event.after.billing_contact_tel IS NULL OR event.after.billing_contact_tel <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.phone`: event.after.billing_contact_tel} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value28
+ CALL apoc.do.when(event.after.billing_contact_email IS NULL OR event.after.billing_contact_email <> \"__debezium_unavailable_value\", \"SET a += {`billingContact.email`: event.after.billing_contact_email} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value29
+ CALL apoc.do.when(event.after.comment IS NULL OR event.after.comment <> \"__debezium_unavailable_value\", \"SET a += {billingComment: event.after.comment} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value30
+ CALL apoc.do.when(event.after.billing_method IS NULL OR event.after.billing_method <> \"__debezium_unavailable_value\", \"SET a += {billingMethod: event.after.billing_method} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value31
+ CALL apoc.do.when(event.after.payment_method IS NULL OR event.after.payment_method <> \"__debezium_unavailable_value\", \"SET a += {paymentMethod: event.after.payment_method} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value32
+ CALL apoc.do.when(event.after.region IS NULL OR event.after.region <> \"__debezium_unavailable_value\", \"SET a += {region: event.after.region} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value33
+ CALL apoc.do.when(event.after.language IS NULL OR event.after.language <> \"__debezium_unavailable_value\", \"SET a += {language: event.after.language} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value34
+ CALL apoc.do.when(event.after.staff_note IS NULL OR event.after.staff_note <> \"__debezium_unavailable_value\", \"SET a += {note: event.after.staff_note} RETURN a\", \"\", {a:a, event:event}) YIELD value AS value35
+ WITH a
+ MATCH (a)-[r:APPLIED]->(e:Entry) SET e += {timestamp: timestamp()}
+ RETURN a
+ ',
+ 'MERGE (a:Account {id: toString(event.before.account_id)}) DETACH DELETE a',
+ {event: event}
+)
+YIELD value
+RETURN value"
+  },

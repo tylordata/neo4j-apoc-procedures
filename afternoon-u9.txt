@@ -1,0 +1,21 @@
+3c376dae
+
+WITH
+    apoc.cypher.runFirstColumn(
+        \"match (r:ScoringRule) where r.activity =~ coalesce($activity, '.*')
+        return apoc.convert.fromJsonMap(r.config)\",
+        {auth: $auth, activity: $activity, options: $options},
+        true
+    ) as x
+UNWIND
+    x as this
+WITH
+    this
+RETURN
+    this {
+        .activity,
+        .targetAdjustments,
+        .selectedAdjustments,
+        .lexileScoreAdjustment,
+        .requiredStatus
+    } AS this

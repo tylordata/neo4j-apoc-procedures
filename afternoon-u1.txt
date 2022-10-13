@@ -1,0 +1,10 @@
+61c55947 (suspect graphql user)
+
+MATCH (`student`:`Student` {id:$`id`})
+RETURN `student` { .id ,questionRoundsInTopicInContext: [
+    student_questionRoundsInTopicInContext IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:ANSWERED]->(sa:StudentAnswer)-[:TO]->(:Question)-[:ACTIVITY_OF]->(t:Topic {topicId: $topicId}),
+(sa)-[:OF_ASSIGNED_CONTEXT]->(ac:AssignedContext)-[:OF_CONTEXT]->(:Context {id: $contextId}),
+(sa)-[:IN_QUESTION_ROUND]->(qr:QuestionRound) WHERE (qr.status = $status)
+RETURN DISTINCT qr
+ORDER BY qr.createdAt DESC\", {this: student, cypherParams: $cypherParams, topicId: $`1_topicId`, contextId: $`1_contextId`, status: $`1_status`}, true) | student_questionRoundsInTopicInContext {challengeCycle: head([(`student_questionRoundsInTopicInContext`)-[:`IN_CHALLENGE_CYCLE`]->(`student_questionRoundsInTopicInContext_challengeCycle`:`ChallengeCycle`) | `student_questionRoundsInTopicInContext_challengeCycle` { .id , .level , .studentProgressInCycle , .studentPerformanceInCycle }]) , .id , .status ,studentAnswers: [(`student_questionRoundsInTopicInContext`)<-[:`IN_QUESTION_ROUND`]-(`student_questionRoundsInTopicInContext_studentAnswers`:`StudentAnswer`) | `student_questionRoundsInTopicInContext_studentAnswers` { .studentAnswerId , .studentAnswer , .isInvalid ,powerUpUsed: head([(`student_questionRoundsInTopicInContext_studentAnswers`)-[:`USED_POWER_UP`]->(`student_questionRoundsInTopicInContext_studentAnswers_powerUpUsed`:`PowerUp`) | `student_questionRoundsInTopicInContext_studentAnswers_powerUpUsed` { .name , .id }]) , .questionAnswerId , .fraction , .points , .bonusPoints ,question: head([(`student_questionRoundsInTopicInContext_studentAnswers`)-[:`TO`]->(`student_questionRoundsInTopicInContext_studentAnswers_question`:`Question`) | `student_questionRoundsInTopicInContext_studentAnswers_question` { .questionId , .difficulty , .text }]) ,createdAt: { formatted: toString(`student_questionRoundsInTopicInContext_studentAnswers`.createdAt) }}] }] } AS `student`"
+  },

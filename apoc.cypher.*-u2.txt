@@ -1,0 +1,126 @@
+b6152eed (suspected graphql user)
+  
+CALL {
+    MATCH
+        (this:`Bacenta`)
+    WHERE
+        this.id \u003d $param0
+    CALL
+        apoc.util.validate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0])
+    RETURN this
+    LIMIT $this_limit
+}
+RETURN
+    this {
+        .id,
+        .name,
+        vacationStatus:  apoc.cypher.runFirstColumn(
+            \"MATCH (this)
+            UNWIND labels(this) AS status
+            WITH status
+            WHERE status \u003d \u0027Active\u0027 OR status \u003d \u0027Vacation\u0027
+            RETURN status"
+            {this: this, auth: $auth}, false),
+        graduationStatus: apoc.cypher.runFirstColumn(
+            \"MATCH (this)
+            UNWIND labels(this) AS status
+            WITH status WHERE status \u003d \u0027Graduated\u0027 OR status \u003d \u0027IC\u0027
+            RETURN status\",
+        {this: this, auth: $auth}, false),
+        .target,
+        .sprinterCost,
+        .urvanCost,
+        sprinterTopUp: apoc.cypher.runFirstColumn(
+            \"MATCH (this)
+            RETURN
+            CASE
+             WHEN this.sprinterCost \u003c\u003d 50 THEN round(0.5 * this.sprinterCost)
+             WHEN this.sprinterCost \u003c\u003d 110 THEN  round(0.7 * this.sprinterCost)
+             WHEN this.sprinterCost \u003e 110 THEN  round(0.8 * this.sprinterCost)
+             ELSE 0
+            END\",
+        {this: this, auth: $auth}, false),
+        urvanTopUp:  apoc.cypher.runFirstColumn(
+            \"MATCH (this)
+            RETURN
+            CASE
+             WHEN this.urvanCost \u003c\u003d 50 THEN round(0.5 * this.urvanCost)
+             WHEN this.urvanCost \u003c\u003d 110 THEN  round(0.7 * this.urvanCost)
+             WHEN this.urvanCost \u003e 110 THEN  round(0.8 * this.urvanCost)
+             ELSE 0
+            END\", {this: this, auth: $auth}, false),
+        .momoNumber,
+        stream_name: apoc.cypher.runFirstColumn(
+            \"MATCH (this)\u003c-[:HAS*3]-(stream:Stream)
+            RETURN DISTINCT toLower(stream.name)\",
+            {this: this, auth: $auth}, false),
+        activeFellowshipCount: apoc.cypher.runFirstColumn(
+            \"MATCH (this)-[:HAS]-\u003e(fellowship:Fellowship:Active)
+            RETURN COUNT (DISTINCT fellowship)\",
+            {this: this, auth: $auth}, false),
+        vacationFellowshipCount: apoc.cypher.runFirstColumn(
+            \"MATCH (this)-[:HAS]-\u003e(fellowship:Fellowship:Vacation)
+            RETURN COUNT(DISTINCT fellowship)\",
+            {this: this, auth: $auth}, false),
+        fellowships: [
+            (this)-[:HAS]-\u003e(this_fellowships:Fellowship)
+            WHERE
+                apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])),\"@neo4j/graphql/FORBIDDEN\", [0]) |
+                this_fellowships {
+                .id, .name, leader: head([ (this_fellowships)\u003c-[:LEADS]-(this_fellowships_leader:Member)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_fellowships_leader { .id } ]), bacenta: head([ (this_fellowships)\u003c-[:HAS]-(this_fellowships_bacenta:Bacenta)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_fellowships_bacenta { .id, .name, council: head([this_fellowships_bacenta_council IN apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:HAS*2]-(council:Council)
+RETURN council\", {this: this_fellowships_bacenta, auth: $auth}, false) | this_fellowships_bacenta_council { .id, .name }]), stream_name:  apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:HAS*3]-(stream:Stream)
+RETURN DISTINCT toLower(stream.name)\", {this: this_fellowships_bacenta, auth: $auth}, false) } ]) } ][..5], constituency: head([ (this)\u003c-[:HAS]-(this_constituency:Constituency)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_constituency { .id, .name, stream_name:  apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:HAS*2]-(stream:Stream)
+RETURN DISTINCT toLower(stream.name)\", {this: this_constituency, auth: $auth}, false), council: head([ (this_constituency)\u003c-[:HAS]-(this_constituency_council:Council)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_constituency_council { .id, .name } ]) } ]), leader: head([ (this)\u003c-[:LEADS]-(this_leader:Member)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_leader { .id, .firstName, .lastName, currentTitle:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_TITLE]-\u003e(title:Title)
+RETURN title.name ORDER BY title.weight DESC LIMIT 1\", {this: this_leader, auth: $auth}, false), .nameWithTitle, .pictureUrl } ]), history: [this_history IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_HISTORY|OLD_HISTORY]-\u003e(log:HistoryLog) RETURN log ORDER BY log.timeStamp DESC LIMIT $limit\", {this: this, auth: $auth, limit: $this_history_limit}, true) | this_history { .id, timeStamp: apoc.date.convertFormat(toString(this_history.timeStamp), \"iso_zoned_date_time\", \"iso_offset_date_time\"), createdAt: head([ (this_history)-[:RECORDED_ON]-\u003e(this_history_createdAt:TimeGraph)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_history_createdAt { .date } ]), loggedBy: head([ (this_history)-[:LOGGED_BY]-\u003e(this_history_loggedBy:Member)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_history_loggedBy { .id, .firstName, .lastName, stream_name:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:BELONGS_TO]-\u003e(:Fellowship)\u003c-[:HAS*4]-(stream:Stream)
+RETURN DISTINCT toLower(stream.name)\", {this: this_history_loggedBy, auth: $auth}, false) } ]), .historyRecord }], memberCount:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS]-\u003e(:Fellowship)\u003c-[:BELONGS_TO]-(members:Active:Member)
+RETURN COUNT(DISTINCT members)\", {this: this, auth: $auth}, false) } as this
+
+
+
+ "MATCH (this:`Bacenta`)
+WHERE this.id \u003d $param0
+CALL apoc.util.validate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0])
+RETURN this { .id, memberCount:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS]-\u003e(:Fellowship)\u003c-[:BELONGS_TO]-(members:Active:Member)
+RETURN COUNT(DISTINCT members)\", {this: this, auth: $auth}, false), fellowships: [ (this)-[:HAS]-\u003e(this_fellowships:Fellowship)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_fellowships { .id, .name, vacationStatus:  apoc.cypher.runFirstColumn(\"MATCH (this)
+UNWIND labels(this) AS status
+WITH status WHERE status \u003d \u0027Active\u0027 OR status \u003d \u0027Vacation\u0027
+RETURN status\", {this: this_fellowships, auth: $auth}, false), memberCount:  apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:BELONGS_TO]-(members:Active:Member)
+RETURN COUNT(DISTINCT members)\", {this: this_fellowships, auth: $auth}, false), leader: head([ (this_fellowships)\u003c-[:LEADS]-(this_fellowships_leader:Member)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_fellowships_leader { .id, .firstName, .lastName, .pictureUrl } ]), bacenta: head([ (this_fellowships)\u003c-[:HAS]-(this_fellowships_bacenta:Bacenta)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_fellowships_bacenta { .id, .name, leader: head([ (this_fellowships_bacenta)\u003c-[:LEADS]-(this_fellowships_bacenta_leader:Member)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_fellowships_bacenta_leader { .id, .firstName, .lastName, .fullName } ]), constituency: head([ (this_fellowships_bacenta)\u003c-[:HAS]-(this_fellowships_bacenta_constituency:Constituency)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_fellowships_bacenta_constituency { .id } ]) } ]) } ] } as this", "CALL {
+MATCH (this:`Fellowship`)
+WHERE this.id \u003d $param0
+CALL apoc.util.validate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0])
+RETURN this
+LIMIT $this_limit
+}
+RETURN this { .id, services: [this_services IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_HISTORY]-\u003e(:ServiceLog)-[:HAS_SERVICE]-\u003e(records:ServiceRecord)-[:SERVICE_HELD_ON]-\u003e(date:TimeGraph)
+WITH DISTINCT records,date
+RETURN records ORDER BY date.date DESC LIMIT $limit\", {this: this, auth: $auth, limit: $this_services_limit}, true) | this_services { .id, bankingProof:  apoc.cypher.runFirstColumn(\"MATCH (this)
+WITH this WHERE this.bankingSlip IS NOT NULL
+OR  this.transactionStatus \u003d \u0027success\u0027
+OR this.tellerConfirmationTime IS NOT NULL
+RETURN true\", {this: this_services, auth: $auth}, false), week:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:SERVICE_HELD_ON]-\u003e(date:TimeGraph)
+RETURN date(date.date).week\", {this: this_services, auth: $auth}, false), .noServiceReason }], history: [this_history IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_HISTORY|OLD_HISTORY]-\u003e(log:HistoryLog) RETURN log ORDER BY log.timeStamp DESC LIMIT $limit\", {this: this, auth: $auth, limit: $this_history_limit}, true) | this_history { .id, timeStamp: apoc.date.convertFormat(toString(this_history.timeStamp), \"iso_zoned_date_time\", \"iso_offset_date_time\"), createdAt: head([ (this_history)-[:RECORDED_ON]-\u003e(this_history_createdAt:TimeGraph)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_history_createdAt { .date } ]), loggedBy: head([ (this_history)-[:LOGGED_BY]-\u003e(this_history_loggedBy:Member)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_history_loggedBy { .id, .firstName, .lastName, stream_name:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:BELONGS_TO]-\u003e(:Fellowship)\u003c-[:HAS*4]-(stream:Stream)
+RETURN DISTINCT toLower(stream.name)\", {this: this_history_loggedBy, auth: $auth}, false) } ]), .historyRecord }] } as this", "CALL {
+MATCH (this:`Fellowship`)
+WHERE this.id \u003d $param0
+CALL apoc.util.validate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0])
+RETURN this
+LIMIT $this_limit
+}
+RETURN this { .id, vacationStatus:  apoc.cypher.runFirstColumn(\"MATCH (this)
+UNWIND labels(this) AS status
+WITH status WHERE status \u003d \u0027Active\u0027 OR status \u003d \u0027Vacation\u0027
+RETURN status\", {this: this, auth: $auth}, false), stream_name:  apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:HAS*4]-(stream:Stream)
+RETURN DISTINCT toLower(stream.name)\", {this: this, auth: $auth}, false), .bankingCode, .name, memberCount:  apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:BELONGS_TO]-(members:Active:Member)
+RETURN COUNT(DISTINCT members)\", {this: this, auth: $auth}, false), location: apoc.cypher.runFirstColumn(\u0027RETURN
+CASE
+\tWHEN this.location IS NOT NULL THEN { point: this.location }
+\tELSE NULL
+END AS result\u0027,{ this: this },false), meetingDay: head([ (this)-[:MEETS_ON]-\u003e(this_meetingDay:ServiceDay)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_meetingDay { .day } ]), bacenta: head([ (this)\u003c-[:HAS]-(this_bacenta:Bacenta)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_bacenta { .id, .name, constituency: head([ (this_bacenta)\u003c-[:HAS]-(this_bacenta_constituency:Constituency)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_bacenta_constituency { .id, .name } ]) } ]), leader: head([ (this)\u003c-[:LEADS]-(this_leader:Member)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_leader { .id, .firstName, .lastName, .fullName, currentTitle:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_TITLE]-\u003e(title:Title)
+RETURN title.name ORDER BY title.weight DESC LIMIT 1\", {this: this_leader, auth: $auth}, false), .nameWithTitle, .pictureUrl } ]) } as this", "MATCH (this:`Fellowship`)
+WHERE this.id \u003d $param0
+CALL apoc.util.validate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0])
+RETURN this { .id, .name, members: [this_members IN apoc.cypher.runFirstColumn(\"MATCH (this)\u003c-[:BELONGS_TO]-(members:Active:Member)
+RETURN DISTINCT members ORDER BY toLower(members.lastName), toLower(members.firstName)\", {this: this, auth: $auth}, true) | this_members { .id, .firstName, .lastName, .pictureUrl, stream_name:  apoc.cypher.runFirstColumn(\"MATCH (this)-[:BELONGS_TO]-\u003e(:Fellowship)\u003c-[:HAS*4]-(stream:Stream)
+RETURN DISTINCT toLower(stream.name)\", {this: this_members, auth: $auth}, false), fellowship: head([ (this_members)-[:BELONGS_TO]-\u003e(this_members_fellowship:Fellowship)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_fellowship { .name } ]), ministry: head([ (this_members)-[:BELONGS_TO]-\u003e(this_members_ministry:Ministry)   | this_members_ministry { .name } ]), maritalStatus: head([ (this_members)-[:HAS_MARITAL_STATUS]-\u003e(this_members_maritalStatus:MaritalStatus)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_maritalStatus { .status } ]), gender: head([ (this_members)-[:HAS_GENDER]-\u003e(this_members_gender:Gender)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_gender { .gender } ]), title: [ (this_members)-[:HAS_TITLE]-\u003e(this_members_title:Title)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_title { .name } ], leadsFellowship: [ (this_members)-[:LEADS]-\u003e(this_members_leadsFellowship:Fellowship)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_leadsFellowship { .id, .name } ], leadsBacenta: [ (this_members)-[:LEADS]-\u003e(this_members_leadsBacenta:Bacenta)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_leadsBacenta { .id, .name } ], leadsMinistry: [ (this_members)-[:LEADS]-\u003e(this_members_leadsMinistry:Ministry)   | this_members_leadsMinistry { .id, .name } ], leadsSonta: [ (this_members)-[:LEADS]-\u003e(this_members_leadsSonta:Sonta)   | this_members_leadsSonta { .id, .name } ], leadsBasonta: [ (this_members)-[:LEADS]-\u003e(this_members_leadsBasonta:Basonta)   | this_members_leadsBasonta { .id, .name } ], leadsConstituency: [ (this_members)-[:LEADS]-\u003e(this_members_leadsConstituency:Constituency)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_leadsConstituency { .id, .name } ], isAdminForCouncil: [ (this_members)-[:IS_ADMIN_FOR]-\u003e(this_members_isAdminForCouncil:Council)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_isAdminForCouncil { .id, .name } ], isAdminForConstituency: [ (this_members)-[:IS_ADMIN_FOR]-\u003e(this_members_isAdminForConstituency:Constituency)  WHERE apoc.util.validatePredicate(NOT (apoc.util.validatePredicate(NOT ($auth.isAuthenticated \u003d true), \"@neo4j/graphql/UNAUTHENTICATED\", [0])), \"@neo4j/graphql/FORBIDDEN\", [0]) | this_members_isAdminForConstituency { .id, .name } ] }] } as this"]
+}, {

@@ -1,0 +1,38 @@
+2f66c6c4
+
+MATCH
+    (p:Project{id:$projectId})
+MATCH
+    (u: User{ id: $userId})
+OPTIONAL MATCH
+    (p)-[:HAS_VERSION]->(pv: ProjectVersion)<-[r]-(b:BPC{code: $bpcCode})
+WHERE
+    type(r) = \"FOR_\" + $environment
+OPTIONAL MATCH
+    (pv)<-[:PUBLISHED]-(u2: User)
+OPTIONAL MATCH
+    (u)-[:CREATED]->(d: Draft)<-[:CREATED_FROM]-(pv)
+CALL
+    apoc.do.when(
+        d.id IS NOT NULL,
+        'WITH ({
+            draftId: d.id,
+            draftName: d.name,
+            publishStatus: d.publishStatus,
+            draftCreationStatus: d.draftCreationStatus,
+            createdFrom: {project:p.name,version:pv.version},
+            createdBy: u.id
+        }) as drafts
+        RETURN drafts',
+        '',
+        { d: d,p: p,pv: pv,u: u}
+    ) YIELD value as value
+WITH
+    collect(value.drafts) as draftsArray,
+    collect(DISTINCT { version: pv.version,createdBy: u2.id, tag: pv.tag, releaseType: pv.releaseType}) as publishedVersionsArray,
+RETURN {
+    publishedVersions: publishedVersionsArray,
+    drafts: draftsArray,
+    projectId: p.id,
+    appCode: p.appCode
+} as result

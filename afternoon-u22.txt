@@ -1,0 +1,32 @@
+8763efc1 (confirmed graphql user)
+
+CALL
+    apoc.util.validate(NOT (any(auth_var1 IN [\"atlas-stackrox\"] WHERE any(auth_var0 IN $auth.roles WHERE auth_var0 = auth_var1))), \"@neo4j/graphql/FORBIDDEN\", [0])
+CALL
+    apoc.cypher.doIt(
+        \"MERGE (vulnerability: Vulnerability { cveId: $cveId })
+        SET vulnerability += {
+          cveId: $cveId,
+          cvssVector: $cvssVector,
+          cvssExploitabilityScore: $cvssExploitabilityScore,
+          cvssImpactScore: $cvssImpactScore,
+          cvssAttackVector: $cvssAttackVector,
+          cvssAttackComplexity: $cvssAttackComplexity,
+          cvssPrivilegesRequired: $cvssPrivilegesRequired,
+          cvssUserInteraction: $cvssUserInteraction,
+          cvssConfidentiality: $cvssConfidentiality,
+          cvssIntegrity: $cvssIntegrity,
+          cvssAvailability: $cvssAvailability,
+          cvssScore: $cvssScore,
+          cvssSeverity: $cvssSeverity,
+          fixedInVersion: $fixedInVersion,
+          summary: $summary
+        }
+        RETURN
+        vulnerability\",
+        {auth: $auth, cypherParams: $cypherParams, cveId: $cveId, cvssVector: $cvssVector, cvssExploitabilityScore: $cvssExploitabilityScore, cvssImpactScore: $cvssImpactScore, cvssAttackVector: $cvssAttackVector, cvssAttackComplexity: $cvssAttackComplexity, cvssPrivilegesRequired: $cvssPrivilegesRequired, cvssUserInteraction: $cvssUserInteraction, cvssConfidentiality: $cvssConfidentiality, cvssIntegrity: $cvssIntegrity, cvssAvailability: $cvssAvailability, cvssScore: $cvssScore, cvssSeverity: $cvssSeverity, fixedInVersion: $fixedInVersion, summary: $summary}
+    ) YIELD value
+WITH
+    apoc.map.values(value, [keys(value)[0]])[0] AS this
+RETURN
+    this { .cveId } AS this

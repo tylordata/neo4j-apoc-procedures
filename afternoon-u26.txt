@@ -1,0 +1,15 @@
+2294ca1a
+
+CALL
+    apoc.cypher.doIt(
+        \"MATCH (d:Data {uuid:$uuid})-[:AT]->(newl:Position)
+        WITH newl
+        MATCH (l:Position) WHERE distance(newl.point, l.point) <= $maxDistance AND ID(l) <> ID(newl)
+        MERGE (l)-[r:WITHIN {distance: distance(newl.point, l.point)}]-(newl)
+        RETURN l\",
+        {uuid:$uuid, maxDistance:$maxDistance}
+    ) YIELD value
+WITH
+    value.l AS l
+RETURN
+    COLLECT(l{ .uuid }) AS locations

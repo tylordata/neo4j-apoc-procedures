@@ -1,0 +1,88 @@
+49a13cd5
+
+
+  with $candidate as candidate, $retailer as retailer
+  match (r:Retailer { id: retailer.id })
+  with candidate, r, retailer
+  create (c:CandidateProduct { id: apoc.text.join([r.id, retailer.productNumber], '_') })
+  set c.gtin = candidate.gtin
+  set c.name = candidate.name
+  set c.image = candidate.image
+  set c.description = candidate.description
+  set c.user = candidate.user
+  set c.weight_unit = candidate.weight.unit
+  set c.weight_value = candidate.weight.value
+  set c.weight_label = candidate.weight.label
+  set c.source = candidate.source
+  set c.language = candidate.language
+  set c.translated_name = candidate.translation.name
+  set c.translated_description = candidate.translation.description
+  set c.discovered_date = candidate.discoveredDate
+  set c.created_date = $createdDate
+
+  with c, r, retailer
+  merge (c)-[rel:HAS_RETAILER]->(r)
+  set rel.product_number = retailer.productNumber
+  set rel.group_id = retailer.groupId
+  set rel.url = retailer.url
+  set rel.listed = true
+  set rel.screenshot = retailer.screenshot
+  set rel.retailer_product_number = apoc.text.join([r.id, retailer.productNumber], '_')
+
+  with c
+  optional match(u:Universe { name: $universe })
+  FOREACH (ignoreMe in CASE WHEN u is not null THEN [1] ELSE [] END |
+    merge (c)-[:HAS_UNIVERSE]->(u)
+  )
+
+  with c
+  call apoc.do.when(size($tags) > 0, \"
+    unwind $tags as tag
+    match (t:Tag { name: tag.name, attribute: tag.attribute })<-[:HAS_TAG]-(:Universe { name: $universe })
+    with collect(t.name) as tagNames
+    match (tg:TagGroup)-[:HAS_TAG]->(t:Tag)
+    with tagNames, collect(t.name) as tgTagNames, tg
+    where apoc.coll.isEqualCollection(tagNames, tgTagNames)
+    with count(tg) as tgs, collect(tg) as taggrps
+    call apoc.do.when(tgs > 0, 'return head(taggrps) as tg', '
+        create (tg:TagGroup {id: randomUUID()})
+        with tg
+        unwind $tags as tag
+        match (t:Tag {name: tag.name})
+        merge (tg)-[:HAS_TAG]->(t)
+        return distinct (tg) as tg
+    ', { taggrps: taggrps, tags: $tags }) yield value
+    with value.tg as tg, $c as c
+    merge (c)-[:HAS_TAG_GROUP]->(tg)
+    return c
+  \", \"return $c as c\", { tags: $tags, c: c, universe: $universe }) yield value
+  with value.c as c
+
+  with c
+  optional match(m:Manufacturer { id: $manufacturer })
+  FOREACH (ignoreMe in CASE WHEN m is not null THEN [1] ELSE [] END |
+    merge (c)-[:HAS_MANUFACTURER]->(m)
+  )
+
+  with c
+  optional match(b:Brand { id: $brand })
+  FOREACH (ignoreMe in CASE WHEN b is not null THEN [1] ELSE [] END |
+    merge (c)-[:HAS_BRAND]->(b)
+  )
+
+  with c
+  optional match(sb:SubBrand { id: $subBrand })
+  FOREACH (ignoreMe in CASE WHEN sb is not null THEN [1] ELSE [] END |
+    merge (c)-[:HAS_SUB_BRAND]->(sb)
+  )
+
+
+      with c
+      merge(cl:GoogleClassification { name: \"/Computers & Electronics/Computer Hardware\" })
+        on create
+          set cl.id = randomUUID()
+      with c, cl
+      merge(c)-[crel:HAS_GOOGLE_CLASSIFICATION]->(cl)
+      set crel.confidence = '0.8999999761581421'
+
+  return { candidate: properties(c) } as result

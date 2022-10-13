@@ -1,0 +1,61 @@
+dc1ba881
+
+WITH
+    apoc.cypher.runFirstColumn(
+        \"CALL db.index.fulltext.queryNodes('UserSearch', '*')
+        YIELD node AS users
+        WHERE
+            users.id <> $auth.jwt.id
+            AND (users.emailConfirmed = true OR users.reserved = true)
+            AND users.banned = false
+            AND users.username <> 'admin'
+            AND users.invitationId IS NULL
+        WITH
+            users ORDER BY rand()
+        RETURN
+            users
+        SKIP
+            $offset
+        LIMIT
+            $limit\", {auth: $auth, cypherParams: $cypherParams, offset: $offset, limit: $limit}, true
+    ) as x
+UNWIND
+    x as this
+WITH
+    this
+RETURN
+    this {
+        .id,
+        .username,
+        .verified,
+        profileImage: apoc.cypher.runFirstColumn(
+            \"OPTIONAL MATCH (this)-[:USER_HAS_PROFILE_IMAGE]->(profileImage)
+            RETURN coalesce(profileImage.url, this.profileImage)\",
+            {this: this, auth: $auth, cypherParams: $cypherParams},
+            false
+        ),
+        isFollowing: apoc.cypher.runFirstColumn(
+            \"MATCH (this)<-[r:USER_IS_FOLLOWING_USER]-(me:User { id: $auth.jwt.id })
+            RETURN toBoolean(COUNT(r))\",
+            {this: this, auth: $auth, cypherParams: $cypherParams},
+            false
+        ),
+        isFollowingYou: apoc.cypher.runFirstColumn(
+            \"MATCH (this)-[r:USER_IS_FOLLOWING_USER]->(me:User { id: $auth.jwt.id })
+            RETURN toBoolean(COUNT(r))\",
+            {this: this, auth: $auth, cypherParams: $cypherParams},
+            false
+        ),
+        following: apoc.cypher.runFirstColumn(
+            \"MATCH (this)-[:USER_IS_FOLLOWING_USER]->(following:User { banned: false })
+            RETURN COUNT(following)\",
+            {this: this, auth: $auth, cypherParams: $cypherParams},
+            false
+        ),
+        followers: apoc.cypher.runFirstColumn(
+            \"MATCH (this)<-[:USER_IS_FOLLOWING_USER]-(followers:User { banned: false })
+            RETURN COUNT(followers)\",
+            {this: this, auth: $auth, cypherParams: $cypherParams},
+            false
+        )
+    } AS this

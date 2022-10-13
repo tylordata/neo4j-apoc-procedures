@@ -1,0 +1,22 @@
+a86e8676 (confirmed graphql user)
+
+CALL
+    apoc.util.validate(NOT (any(auth_var1 IN [\"atlas-stackrox\"] WHERE any(auth_var0 IN $auth.roles WHERE auth_var0 = auth_var1))), \"@neo4j/graphql/FORBIDDEN\", [0])
+CALL
+    apoc.cypher.doIt(
+        \"MATCH (:Software {
+            name: $softwareName,
+            source: $softwareSource
+        })<-[:SOFTWARE]-(sV:SoftwareVersion {
+            version: $softwareVersion
+        })
+        MATCH (v:Vulnerability {
+            cveId: $vulnerabilityCveId
+        })
+MERGE (sV)-[:VULNERABILITY]->(v)
+RETURN sV\", {auth: $auth, cypherParams: $cypherParams, softwareName: $softwareName, softwareSource: $softwareSource, softwareVersion: $softwareVersion, vulnerabilityCveId: $vulnerabilityCveId}) YIELD value
+            WITH apoc.map.values(value, [keys(value)[0]])[0] AS this
+
+
+RETURN this { .version } AS this"
+  },

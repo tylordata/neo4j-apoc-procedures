@@ -1,0 +1,21 @@
+a4192bba
+
+match
+    (p:Post {uuid: $postid})
+CALL
+    apoc.do.when(
+        p is NOT NULL,
+        'create (a: Attachment {
+            type: type,
+            url: url,
+            meta: meta,
+            uuid: apoc.create.uuid(),
+            created_at: timestamp(),
+            updated_at: timestamp()
+        })
+        create (p)-[:ATTACHMENT]->(a)
+        return a',
+        'return null as a',
+        {p: p, type: $type, url: $url, meta: $meta}
+    ) YIELD value
+return value.a as a

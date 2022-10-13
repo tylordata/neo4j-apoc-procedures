@@ -1,0 +1,54 @@
+7023ce69
+
+MATCH
+    (this:`Organization`)
+WHERE
+    (this.shortUrl = $param0
+    AND size([
+        (this)-[:IS_INVESTOR_IN]->(this0:`Opportunity`)
+        WHERE (
+            this0.status = $param1
+            AND this0.source IN $param2
+            AND NOT this0.hidden = $param3
+            AND apoc.cypher.runFirstColumn(
+                \"MATCH (this0)<-[aggr_edge:IS_COMPANY_IN]-(aggr_node:Organization)
+                RETURN count(aggr_node) >= $aggr_count_GTE\",
+                { this0: this0, aggr_count_GTE: $aggr_count_GTE },
+                false
+            )
+        ) | 1
+    ]) > 0)
+RETURN
+    this {
+        .name,
+        .domain,
+        .location,
+        investorIn: [
+            (this)-[:IS_INVESTOR_IN]->(this_investorIn:Opportunity)
+            WHERE (
+                this_investorIn.status = $this_investorIn_param0
+                AND this_investorIn.source IN $this_investorIn_param1
+                AND NOT this_investorIn.hidden = $this_investorIn_param2
+                AND apoc.cypher.runFirstColumn(
+                    \"MATCH (this_investorIn)<-[aggr_edge:IS_COMPANY_IN]-(aggr_node:Organization)
+                    RETURN count(aggr_node) >= $aggr_count_GTE\",
+                    { this_investorIn: this_investorIn, aggr_count_GTE: $aggr_count_GTE },
+                    false
+            ))
+            | this_investorIn {
+                .name,
+                .roundName,
+                roundDate: apoc.date.convertFormat(toString(this_investorIn.roundDate), \"iso_zoned_date_time\", \"iso_offset_date_time\"),
+                .amountRaised,
+                companies: [
+                (this_investorIn)<-[:IS_COMPANY_IN]-(this_investorIn_companies:Organization)
+                | this_investorIn_companies {
+                    .name,
+                    .shortUrl,
+                    affinityId: this_investorIn_companies.id
+                }]
+                , affinityId: this_investorIn.id
+            }
+        ],
+        affinityId: this.id
+    } as this

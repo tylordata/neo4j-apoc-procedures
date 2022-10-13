@@ -1,0 +1,68 @@
+b9d6e2bc
+    
+
+MATCH
+    (p:Product{genealogyCode: $genealogyCode}) 
+CALL 
+    apoc.when(
+        p.matType = \"MT_COMPONENT\" AND $includeChildrenDieInventoryIDs = true,
+        'OPTIONAL MATCH(d:Product{matType: \"MT_DIE2\"})<-[:HAS_PRODUCT]-(p)
+        UNWIND d.inventoryIDs AS invIds
+        WITH collect(distinct invIds) as distInvIDs
+        return distInvIDs',    
+        'return null as distInvIDs',
+        {p:p}
+    ) YIELD value as m 
+RETURN 
+    p.genealogyCode as genealogyCode,
+    p.matCode as matCode,
+    p.matType as matType,
+    p.name as name,
+    p.manufacturer as manufacturer,
+    p.partNumber as partNumber,
+    p.deviceCategory as deviceCategory,
+    p.deviceType as deviceType,
+    p.marketAvailability as marketAvailability,
+    p.dieDate as dieDate,
+    p.sealDieWidth as sealDieWidth,
+    p.sealDieLength as sealDieLength,
+    p.wholeDieWidth as wholeDieWidth,
+    p.wholeDieLength as wholeDieLength,
+    p.dieThickness as dieThickness,
+    p.chkMetalAluminum as chkMetalAluminum,
+    p.chkMetalGold as chkMetalGold,
+    p.chkMetalTungsten as chkMetalTungsten,
+    p.chkMetalCopper as chkMetalCopper,
+	p.numberOfMetals as numberOfMetals,
+	p.numberOfPolys as numberOfPolys,
+	p.minContactedGatePitch as minContactedGatePitch,
+	p.minimumMetal1Pitch as minimumMetal1Pitch,
+	p.processType as processType,
+	p.processGeneration as processGeneration,
+	p.foundry as foundry,
+	p.itemDescription as itemDescription,
+	p.productWeight as productWeight,
+	p.productWidth as productWidth,
+	p.productLength as productLength,
+	p.productHeight as productHeight,
+	p.pinCount as pinCount,
+	p.interconnectType as interconnectType,
+	p.packageType as packageType,
+	p.packageSizeLength as packageSizeLength,
+	p.packageSizeWidth as packageSizeWidth,
+	p.packageSizeThickness as packageSizeThickness,
+	p.material as material,
+	p.packageMarkings as packageMarkings,
+	p.countryOfPurchase as countryOfPurchase,
+	p.purchasePrice as purchasePrice,
+	p.batteryType as batteryType,
+	p.batteryLifeActive as batteryLifeActive,
+	p.batteryLifeStandby as batteryLifeStandby,
+	p.displayType as displayType,
+	p.os as os,
+	p.ultimateParent as ultimateParent,
+	p.inventoryIDs as inventoryIDs,
+	p.designation as designation,
+	p.yearOfPurchase as yearOfPurchase,
+	p.dateOfPurchase as dateOfPurchase,
+    m.distInvIDs as childrenDieInventoryIDs

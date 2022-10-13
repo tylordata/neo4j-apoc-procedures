@@ -1,0 +1,60 @@
+350984fc
+
+CALL 
+    apoc.cypher.doIt(
+    \"MERGE (n:\" + $nodeLabel + \":\" + $accountLabel + \"{\" + \"account_id:$account_id,\" + $idPropName + \":$id})\" +
+    \"ON CREATE SET n +\u003d props \\" +
+    \"ON MATCH SET n +\u003d props \\" +
+    \"WITH n \\" +
+    \"OPTIONAL MATCH (i:Image:\" + $accountLabel + \"{docker_id:n.image_id, name:n.image_name, registry:n.image_registry}) WHERE NOT exists((n)\u003c-[:IS_TEMPLATE_OF]-(i))\\" +
+    \"CALL apoc.do.when(i IS NOT NULL,\\\"CREATE (container)\u003c-[:IS_TEMPLATE_OF]-(image) RETURN container\\\",\\\"RETURN container\\\",{container:n, image:i}) YIELD value \\" +
+    \"WITH value.container as c \\" +
+    \"MATCH (h:Host:\" + $accountLabel + \"{host_id:c.host_id}) WHERE h.cluster_id \u003e 0 \\" +
+    \"MERGE (c)-[:HOSTED_ON]-\u003e(h) \\" +
+    \"WITH c, c.cluster_name AS cluster_name, h.cluster_id AS cluster_id \\" +
+    \"MERGE (p:Pod:\" + $accountLabel + \"{account_id: c.account_id, name:c.pod_name, controller:c.controller, controller_type:c.controller_type, namespace:c.namespace, cluster_id:cluster_id}) \\" +
+    \"MERGE (c)-[:RUN_ON]-\u003e(p) \\" +
+    \"WITH p, cluster_name, cluster_id \\" +
+    \"MERGE (ctrl:Controller:\" + $accountLabel + \"{account_id: p.account_id, name:p.controller, type:p.controller_type, namespace:p.namespace, cluster_id:cluster_id}) \\" +
+    \"MERGE (p)-[:DEPLOYED_BY]-\u003e(ctrl) \\" +
+    \"WITH ctrl, cluster_name, cluster_id \\" +
+    \"MERGE (ns:Namespace:\" + $accountLabel + \"{account_id: ctrl.account_id, name:ctrl.namespace, cluster_id:cluster_id}) \\" +
+    \"MERGE (ctrl)-[:LOCATED_IN]-\u003e(ns) \\" +
+    \"WITH ns, cluster_name, cluster_id \\" +
+    \"MERGE (cluster:Cluster:\" + $accountLabel + \"{account_id: ns.account_id, id:cluster_id}) \\" +
+    \"ON CREATE SET cluster.name\u003dcluster_name\\" +
+    \"ON MATCH SET cluster.name\u003dcluster_name\\" +
+    \"MERGE (ns)-[:PART_OF]-\u003e(cluster)\",
+    {account_id:$account_id,id:$id, props:$props}
+) YIELD value RETURN true
+
+CALL apoc.cypher.doIt(
+    \"MATCH (n:\" + $nodeLabel + \":\" + $accountLabel + \"{\" + \"account_id:$account_id,\" + $idPropName + \":$id}),\\" +
+    \"(a:AssuranceControl:\" + $accountLabel + \"{account_id: n.account_id, global_id:n.global_id})\\" +
+    \"WHERE NOT exists ((a)-[:DETECTED_ON]-\u003e(n)) \\" +
+    \"CREATE (a)-[:DETECTED_ON]-\u003e(n)\",
+    {account_id:$account_id,id:$id}
+) YIELD value RETURN 1
+
+CALL apoc.cypher.doIt(
+    \"MATCH (h:Host:\" + $accountLabel +\") \"+
+    \"WHERE h.host_id\u003d$hostId \" +
+    \"RETURN apoc.convert.toJson({account_id:h.account_id,global_id:h.global_id,subnet_id:h.host_subnet_id}) as value\",
+    {hostId:$hostId})
+YIELD value RETURN value.value as value
+
+CALL apoc.cypher.doIt(
+    "MATCH (c:\" + $accountLabel +\")" +
+    "WHERE " +
+        "(c:Cluster OR c:EksCluster OR c:AksCluster) " +
+        "AND $subnetId IN c.subnet_ids" +
+    "RETURN apoc.convert.toJson({account_id:c.account_id,cluster_id:COALESCE(c.eks_cluster_id,c.global_id)}) as value\",
+    {subnetId:$subnetId})
+YIELD value RETURN value.value as value
+
+CALL apoc.cypher.doIt(
+    \"MERGE (n:\" + $nodeLabel + \":\" + $accountLabel + \"{\" + \"account_id:$account_id,\" + $idPropName + \":$id})\\" +
+    \"ON CREATE SET n +\u003d props \\" +
+    \"ON MATCH SET n +\u003d props \    \",
+    {account_id:$account_id,id:$id, props:$props})
+YIELD value RETURN true"]

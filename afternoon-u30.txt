@@ -1,0 +1,101 @@
+15e1263e
+
+MATCH
+    (d:Draft{id:$package.draft.Id})
+SET
+    d.version = $package.project.Version,
+    d:ProjectVersion,
+    d.draftId = d.id,
+    d.publishStatus = 'Published'
+REMOVE
+    d:Draft
+WITH
+    d LIMIT 1
+OPTIONAL MATCH
+    (d)-[r:HAS_DRAFT_LOCALIZATION]->(dl:DraftLocalization)
+CALL
+    apoc.do.when(
+        dl IS NOT NULL,
+        'MERGE (d)-[r9:HAS_LOCALIZATION]->(dl)
+        SET r9.indexedOn = dateTime(), dl.version = d.version, dl.referenceId = dl.publishedReferenceId, dl:Localization
+        REMOVE dl:DraftLocalization RETURN d',
+        '',
+        {d:d, dl:dl}
+    ) YIELD value as localizationNodePublish
+WITH
+    d, dl, r
+LIMIT
+    1
+OPTIONAL MATCH
+    (d)-[rel1:HAS_DRAFT_CDS]->(dc: DraftCDS)
+CALL
+    apoc.do.when(
+        dc IS NOT NULL,
+        'MERGE (d)-[r2:HAS_CDS]->(dc)
+        SET r2.indexedOn = dateTime(), dc.version = d.version, dc.referenceId = dc.publishedReferenceId, dc:CDS
+        REMOVE dc:DraftCDS RETURN d',
+        '',
+        {d:d, dc:dc}
+    ) YIELD value as CDSPublish
+WITH
+    d, dl, r, dc, rel1 LIMIT 1
+OPTIONAL MATCH
+    (d)-[rel2:HAS_DRAFT_VIEWS]->(v:DraftViews)
+CALL
+    apoc.do.when(
+        v IS NOT NULL,
+        'MERGE(d)-[r10:HAS_VIEWS]->(v)
+        SET r10.indexedOn = dateTime(), v.version = d.version,v.referenceId = v.publishedReferenceId, v:Views
+        REMOVE v:DraftViews
+        WITH v
+        MATCH (v)-[rel3:HAS_DRAFT_VIEW]->(vw:DraftView)
+        MERGE (v)-[r11:HAS_VIEW]->(vw)
+        SET r11.indexedOn = dateTime(),vw.referenceId = vw.publishedReferenceId, vw: View
+        REMOVE vw:DraftView
+        DELETE rel3 RETURN v', '', {d:d, v:v}
+    ) YIELD value as ViewsPublish
+WITH
+    d, dl, r, dc, rel1, rel2, v
+LIMIT
+    1
+OPTIONAL MATCH
+    (d)-[rdm:HAS_DRAFT_DOMAINMODEL]->(dm:DomainModel)
+CALL
+    apoc.do.when(
+        dm IS NOT NULL,
+        'MERGE(d)-[rdm2:HAS_DOMAINMODEL]->(dm)
+        SET rdm2.indexedOn = dateTime(), dm.version = d.version
+        RETURN d, dm',
+        '',
+        {d:d, dm:dm}
+    ) YIELD value as DomainModelsPublish
+WITH
+    d, dl, r, dc, rel1, rel2, v, rdm, dm
+LIMIT
+    1
+OPTIONAL MATCH
+    (d)-[rp:HAS_DRAFT_PLUGINS]->(dp:Plugins)
+CALL
+    apoc.do.when(
+        dp IS NOT NULL,
+        'MERGE(d)-[rp2:HAS_PLUGINS]->(dp)
+        SET rp2.indexedOn = dateTime(), rp2.connectorName = rp.connectorName, rp2.connector = rp.connector, dp.version = d.version, dp.referenceId = dp.publishedReferenceId
+        RETURN d',
+        '', {d:d, dp:dp, rp:rp}
+    ) YIELD value as PluginsPublish
+WITH d, dl, r, dc, rel1, rel2, v, rdm, dm, rp, dp LIMIT 1
+OPTIONAL MATCH (d)-[:HAS_VIEW_MODELS]->(vms:ViewModels)
+OPTIONAL MATCH (vms)-[:HAS_VIEW_MODEL]->(vmodel:ViewModel)
+SET vms.referenceId = vms.publishedReferenceId, vmodel.referenceId = vmodel.publishedReferenceId
+WITH d, dl, r, dc, rel1, rel2, v, rdm, rp, dm, dp, vms, v.referenceId as viewsReferenceId, dl.referenceId as localizationReferenceId, dc.referenceId as cdsReferenceId, dp.referenceId as pluginReferenceId, vms.referenceId as viewModelsReferenceId LIMIT 1
+MATCH (u:User{id: $package.user.Id})
+MATCH (b:BPC{code:$package.bpc.code})
+MATCH (d)<-[:CREATED_FROM]-(pv:ProjectVersion)<-[r4:HAS_VERSION]-(p:Project)
+OPTIONAL MATCH (p)-[:HAS_VERSION]->(pv1:ProjectVersion)<-[rel0]-(b) WHERE type(rel0) = \"ON_\" + $package.bpc.environment
+MERGE (p)-[r5:HAS_VERSION]->(d) ON CREATE SET r5.indexedOn = dateTime() SET d.id = pv.id, dl.id = pv.id, dc.id = pv.id, v.id = pv.id, dm.id = pv.id, dp.id = pv.id, vms.id = pv.id, vms.version = d.version, d.name = p.name
+MERGE (u)-[r7:PUBLISHED]->(d) ON CREATE SET r7.indexedOn = dateTime()
+WITH d, dl, r, dc, rel1, rel2, v, rdm, rp, dm, dp, vms, b, rel0, viewsReferenceId, localizationReferenceId, cdsReferenceId, pluginReferenceId, viewModelsReferenceId LIMIT 1
+CALL apoc.merge.relationship(b, 'ON_'+$package.bpc.environment, {}, {}, d, {}) YIELD rel
+DELETE r, rel1, rel2, rdm, rp, rel0
+RETURN {viewsReferenceId: viewsReferenceId, localizationReferenceId: localizationReferenceId, cdsReferenceId: cdsReferenceId, pluginReferenceId: pluginReferenceId, viewModelsReferenceId: viewModelsReferenceId} as result"
+  },

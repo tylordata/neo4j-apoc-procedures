@@ -1,0 +1,81 @@
+1729a97a (confirmed graphql user)
+
+
+MATCH (this:User)
+WHERE this.id = $this_id
+RETURN
+    this {
+        .userName,
+        guestPostsV2: [
+            this_guestPostsV2 IN apoc.cypher.runFirstColumn(
+            \"MATCH (:Post)<-[:POSTED]-(author:User)
+            CALL {
+                WITH author
+                MATCH (p)<-[:POSTED]-(author)
+                WHERE p.status = 'active' AND p.visibility = 'yes' AND author.active = 1
+                WITH p
+                LIMIT 1
+                RETURN collect(DISTINCT p) as posts
+            }
+            UNWIND posts as Posts
+            RETURN DISTINCT Posts
+            ORDER BY Posts.createdAt
+            DESC LIMIT 50\",
+            {this: this, auth: $auth, limit: $this_guestPostsV2_limit, skip: $this_guestPostsV2_skip}, true)
+            | this_guestPostsV2 {
+                .id,
+                .downloadUrl,
+                .streamingUrl,
+                .description,
+                .defaultLanguage,
+                .availToDownload,
+                .fullFilename,
+                .duration,
+                .visibility,
+                .padDuration,
+                .status,
+                hasLiked: apoc.cypher.runFirstColumn(
+                    \"MATCH (this)<-[r:LIKED]-(u:User {id: $userId})
+                    RETURN count(r) > 0\",
+                    {this: this_guestPostsV2, auth: $auth, userId: $this_guestPostsV2_hasLiked_userId},
+                    false
+                ),
+                .active,
+                .hasExplicitContent,
+                .explicit,
+                updatedAt: apoc.date.convertFormat(toString(this_guestPostsV2.updatedAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"),
+                createdAt: apoc.date.convertFormat(toString(this_guestPostsV2.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\"),
+                users: [
+                    (this_guestPostsV2)<-[:POSTED]-(this_guestPostsV2_users:User) |
+                    this_guestPostsV2_users {
+                        .userName,
+                        .id,
+                        .isVerified,
+                        .gender,
+                        .profileImg
+                    }
+                ],
+                likesAggregate: {
+                    count: head(apoc.cypher.runFirstColumn(
+                        \"MATCH (this_guestPostsV2)<-[r:LIKED]-(n:User)
+                        RETURN COUNT(n)\",
+                        { this_guestPostsV2: this_guestPostsV2 })
+                    )
+                },
+                commentsAggregate: {
+                    count: head(apoc.cypher.runFirstColumn(
+                        \"MATCH (this_guestPostsV2)<-[r:COMMENTED_ON]-(n:Comment)
+                        RETURN COUNT(n)\",
+                        { this_guestPostsV2: this_guestPostsV2 })
+                    )
+                },
+                sharesAggregate: {
+                    count: head(apoc.cypher.runFirstColumn(
+                        \"MATCH (this_guestPostsV2)<-[r:SHARED]-(n:User)
+                        RETURN COUNT(n)\",
+                        { this_guestPostsV2: this_guestPostsV2 })
+                    )
+                }
+            }
+        ]
+    } as this

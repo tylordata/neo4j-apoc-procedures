@@ -1,0 +1,108 @@
+350984fc
+ 
+UNWIND 
+    $_batch AS _batch 
+WITH 
+    _batch.n AS n,
+    _batch.existingEvidence AS existingEvidence,
+    _batch.newEvidences AS newEvidences
+CALL 
+    apoc.do.when(
+        existingEvidence IN newEvidences, 
+        \"RETURN false\",
+        \"MATCH(Evidence { account_id: n.account_id, id: existingEvidence})-[r:DETECTED_ON]->(n) DELETE r RETURN true\",
+        {n:n, newEvidences:newEvidences, existingEvidence:existingEvidence}
+    ) YIELD value
+RETURN 1;
+
+
+CALL apoc.periodic.iterate(
+    \"MATCH (n:Function)
+    WHERE
+        n.account_id=$account_id
+        AND n.global_id=$global_id 
+    WITH 
+        n,
+        apoc.coll.flatten(n.vulnerabilities + n.sensitive_data + n.malware) AS newEvidences, 
+        n._previous_evidences AS existingEvidences 
+    UNWIND existingEvidences AS existingEvidence RETURN n, existingEvidence, newEvidences\",
+    \"CALL apoc.do.when(
+        existingEvidence IN newEvidences, 
+        'RETURN false', 
+        'MATCH(Evidence{account_id: n.account_id, id: existingEvidence})-[r:DETECTED_ON]->(n) DELETE r RETURN true', 
+        {n:n, newEvidences:newEvidences, existingEvidence:existingEvidence}
+    ) YIELD value RETURN 1\",
+    {batchMode: \"BATCH\", retries: 3, batchSize: 10000, params: $data}
+) YIELD
+    batches,
+    total,
+    timeTaken ,
+    committedOperations,
+    failedOperations,
+    failedBatches,
+    retries,
+    errorMessages,
+    batch,
+    operations,
+    wasTerminated,
+    failedParams,
+    updateStatistics;
+
+
+CALL apoc.cypher.doIt( 
+    \"MATCH (i:\" + $nodeLabel + \"{\" + \"account_id:$account_id})\" +
+    \"WHERE i.global_id STARTS WITH $apigw_global_id\" +
+    \"OPTIONAL MATCH (i)\u003c-[:CONNECTED_TO]-(f:Function) \" +
+    \"WITH i, f, COALESCE(f.internet_exposure_status, \\\"unknown\\\") as previous_status, \" +
+    \"CASE \" +
+        \"WHEN f.internet_exposure_status_counter IS NULL OR f.internet_exposure_status_counter \u003c= 0 THEN 0\" +
+        \"ELSE f.internet_exposure_status_counter-1\" +
+        \"END AS counter_value\" +
+        \"WITH i, f, previous_status, counter_value, \" +
+        \"CASE \" +
+            \"WHEN counter_value > 0 THEN 'connected'\" +
+            \"ELSE 'disconnected'\" +
+        \"END AS status_value\" +
+        \"SET f.internet_exposure_status_counter=counter_value, f.internet_exposure_status=status_value\" +
+        \"WITH i, f, previous_status, counter_value, status_value \" +
+        \"CALL apoc.do.when(
+            counter_value > 0,
+            'REMOVE i.paths_api_gateway, i:ApiGateway',
+            'DETACH DELETE i',
+            {i:i, counter_value:counter_value}
+        ) yield value \" +
+    \"RETURN {
+        account_id: f.account_id,
+        global_id: f.global_id,
+        internet_exposure_status: status_value,
+        publish: (previous_status\u003c>status_value)
+    } as exposed_function\",
+    {account_id:$account_id, apigw_global_id:$apigw_global_id}
+) YIELD value
+RETURN DISTINCT
+    value.exposed_function as exposed_function
+
+
+MATCH (a:AssuranceControl)-[:DETECTED_ON]->(c:Container)
+WHERE a.recommendation IS NULL OR a.recommendation = \"\"
+WITH a,c
+CALL apoc.do.case([
+    toLower(a.control)=toLower(\"SYS_ADMIN capability added\"), \"RETURN 'Container ' +  c.name + ' in ' + c.namespace + ' namespace should not include SYS_ADMIN in securityContext.capabilities.add' AS v\",
+    toLower(a.control)=toLower(\"hostPath volumes mounted\"), \"RETURN 'Container ' +  c.name + ' in ' + c.namespace + ' namespace should not set spec.template.volumes.hostPath' AS v\",
+    toLower(a.control)=toLower(\"Access to host IPC namespace\"), \"RETURN 'Container ' +  c.name + ' in ' + c.namespace + ' namespace should not set spec.template.spec.hostIPC to true' AS v\",
+    toLower(a.control)=toLower(\"Access to host PID\"), \"RETURN 'Container ' +  c.name + ' in ' + c.namespace + ' namespace should not set spec.template.spec.hostPID to true' AS v\",
+    toLower(a.control)=toLower(\"Access to host network\"), \"RETURN 'Container ' +  c.name + ' in ' + c.namespace + ' namespace should not set spec.template.spec.hostNetwork to true' AS v\",
+    toLower(a.control)=toLower(\"Privileged\"), \"RETURN 'Container ' +  c.name + ' in ' + c.namespace + ' namespace should set securityContext.privileged to false' AS v\"
+        ],
+    'RETURN \"\" as v',
+    {c:c}
+) YIELD value
+SET a.recommendation = value.v", "MATCH (ir:InsightResource:Suppressed:SuppressedWithExpiration) 
+WHERE ir.expiration_date \u003c datetime()
+CALL apoc.do.when(
+    ir IS NOT NULL,
+    \"SET resource += props REMOVE resource:Suppressed:SuppressedWithExpiration RETURN resource\",
+    \"RETURN resource\",
+    {resource:ir, props:$props}) YIELD value
+RETURN value.resource as insightResource"]
+}, {

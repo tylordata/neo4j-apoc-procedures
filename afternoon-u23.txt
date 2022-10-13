@@ -1,0 +1,111 @@
+7fb3d59a
+
+MATCH
+    (v:Vulnerability {account_id:$account_id}) WHERE toLower(v.name)=toLower(\"CVE-2021-44228\") WITH v, 1 as unused
+CALL {
+    WITH v
+    MATCH (v)-[:DETECTED_ON]->(resource:Host)
+    RETURN resource, v as vuln
+    UNION
+    WITH v
+    MATCH (v)-[:DETECTED_ON]->(resource:Function)
+    RETURN resource, v as vuln
+    UNION
+    WITH v
+    MATCH (v)-[:DETECTED_ON]->(:Image)-->(:Container)-->(:Pod)-->(resource:Controller)
+    WHERE resource.type<>\"nocontroller\"
+    RETURN resource, v as vuln
+    UNION
+    WITH v
+    MATCH (v)-[:DETECTED_ON]->(:Image)-->(:Container)-->(resource:Pod)
+    WHERE resource.controller_type=\"nocontroller\"
+    RETURN resource, v as vuln
+}
+WITH DISTINCT
+    resource, collect(DISTINCT vuln) as evidence
+OPTIONAL MATCH
+    path=(resource)-[*0..7]->(start)
+WHERE
+    NOT exists((start)-->()) AND start.account_id=resource.account_id AND (start:CloudProvider OR start:Cluster OR start:Registry)
+CALL
+    apoc.do.when(
+        path IS NULL,
+        'MATCH newPath=(resource) RETURN newPath as path',
+        'RETURN path',
+        {path:path, resource:resource}
+    ) YIELD value
+WITH
+    resource,
+    evidence,
+    apoc.convert.toJson({nodes: nodes(value.path), rels: relationships(value.path)}) as path,
+    apoc.hashing.fingerprint(value.path,[\"last_scanned\",\"created\"]) as path_hash
+MERGE
+    (insight:Insight{id:$insight_id_param,instance:$insight_instance_param,account_id:resource.account_id})
+    ON CREATE
+    SET insight += $insight_param
+WITH
+    resource, evidence, path_hash, path, insight
+MERGE
+    (insight)-[:HAS_LABEL]->(label:InsightLabel{account_id:insight.account_id,label:$label_param})
+WITH
+    resource, evidence, path_hash, path, insight, label
+CALL
+    apoc.cypher.doIt(
+        \"WITH $insight as insight, $label as label \" +
+        \"SET insight:AccountID_\" + apoc.text.replace(insight.account_id, \"[^0-9a-zA-Z_]\", '_') +
+        \"SET label:AccountID_\" + apoc.text.replace(label.account_id, \"[^0-9a-zA-Z_]\", '_')+
+        \"RETURN insight\",
+        {insight:insight,label:label})
+     YIELD value
+WITH
+    resource, evidence, path_hash, path, insight
+MERGE
+    (ir:InsightResource{id:id(resource), account_id:resource.account_id, insight_id:insight.id, insight_instance:insight.instance})
+ON CREATE
+	SET ir += {
+		is_new:true,
+		name:resource.name,
+		found_date: datetime(),
+		last_scanned: COALESCE(resource.last_scanned, datetime()),
+		global_id: resource.global_id,
+		internet_exposure_status: COALESCE(resource.internet_exposure_status, \"unknown\"),
+		path: path
+	}
+ON MATCH
+	SET ir += {
+		name:resource.name,
+		last_scanned: COALESCE(resource.last_scanned, ir.last_scanned),
+		internet_exposure_status: COALESCE(resource.internet_exposure_status, \"unknown\"),
+		global_id: resource.global_id,
+		path: path
+	}
+SET
+    ir:Pending
+WITH
+    insight, ir, evidence, resource
+CALL
+    apoc.do.when(
+        ir.is_new = false AND apoc.hashing.fingerprint(ir,[\"hash\",\"is_new\"]) = COALESCE(ir.hash,\"0\"),
+        'REMOVE ir:Pending RETURN ir',
+        'RETURN ir',
+        {ir:ir}
+    ) YIELD value
+WITH
+    insight, value.ir as ir, evidence, resource
+CALL
+    apoc.cypher.doIt(
+        \"WITH $ir as ir \" +
+        \"SET ir:AccountID_\"+apoc.text.replace(ir.account_id, \"[^0-9a-zA-Z_]\", '_')+
+        \"RETURN ir \n\",
+        {ir:ir}
+    ) YIELD value
+MERGE
+    (insight)-[:HAS]->(ir)
+WITH
+    insight, ir, evidence, resource
+MERGE
+    (ir)-[:IMPACTS]->(resource)
+WITH
+    ir, evidence
+FOREACH
+    (v IN evidence | MERGE (ir)-[:HAS_EVIDENCE]->(v));

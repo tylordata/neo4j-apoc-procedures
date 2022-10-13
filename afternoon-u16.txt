@@ -1,0 +1,30 @@
+fc3627e4 (confirmed graphql user)
+
+    "head(logsForDb).source": "bolt-session	bolt	@neo4j/graphql/2.4.0		client/10.8.69.4:55546	server/10.8.7.14:17687>",
+    "head(logsForDb).query": "
+                WITH apoc.cypher.runFirstColumn(\"MATCH (g:Group {id:$id})
+WHERE
+  ($auth.jwt.sub IS NOT NULL AND
+  exists(
+    (g)-[:OWNED_BY]->(:Person {id:$auth.jwt.sub})
+    )
+  )
+  OR
+  ($secret <> \\"\\" AND exists((g)<-[:SHARE_TARGET]-(:Shareable {secret: $secret})))
+RETURN g\", {auth: $auth, id: $id, secret: $secret}, false) as x
+                UNWIND x as this
+                WITH this
+
+
+RETURN this { .id, .name, members: [this_members IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:HAS_MEMBER]->(p:Person)
+WITH apoc.text.clean(p.name) as namesCleaned, p
+WITH apoc.coll.sortText(collect(namesCleaned), {locale:['is','en']}) as namesSorted, p
+RETURN p
+ORDER BY namesSorted\", {this: this, auth: $auth}, true) | this_members { .id, name:  apoc.cypher.runFirstColumn(\"MATCH (this)
+OPTIONAL MATCH (this)-[:APP_PROFILE]->(profile:AppProfile)
+WHERE exists((profile)<-[:USER_PROFILE]-(:App {id: $auth.jwt.appId}))
+RETURN CASE WHEN (profile IS NOT NULL AND profile.name <> '') then profile.name ELSE this.name END\", {this: this_members, auth: $auth}, false), profileImage: head([this_members_profileImage IN apoc.cypher.runFirstColumn(\"MATCH (media:Media {type:\\"PROFILE_IMAGE\\"})<-[:PROFILE_PICTURE]-(this)
+RETURN media\", {this: this_members, auth: $auth}, false) | this_members_profileImage { .key, .url }]), appProfile: head([this_members_appProfile IN apoc.cypher.runFirstColumn(\"OPTIONAL MATCH (this)-[:APP_PROFILE]->(appProfile:AppProfile {appId: $auth.jwt.appId})
+RETURN appProfile\", {this: this_members, auth: $auth}, false) | this_members_appProfile { .companyName, .companyTitle, .about, profileImage: head([this_members_appProfile_profileImage IN apoc.cypher.runFirstColumn(\"MATCH (media:Media {type:\\"PROFILE_IMAGE\\"})<-[:PROFILE_PICTURE]-(this)
+RETURN media\", {this: this_members_appProfile, auth: $auth}, false) | this_members_appProfile_profileImage { .key, .url }]) }]) }] } AS this"
+  },

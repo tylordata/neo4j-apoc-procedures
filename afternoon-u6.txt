@@ -1,0 +1,6 @@
+003800df (suspected graphql user)
+
+
+    "head(logsForDb).source": "bolt-session	bolt	neo4j-javascript/4.4.5		client/10.8.77.12:58572	server/10.8.49.8:17687>",
+    "head(logsForDb).query": "MATCH (`floor`:`Floor` {uuid:$uuid}) RETURN `floor` { .uuid , .z ,polygonsToFill: [(`floor`)-[:`CONTAINS`]->(`floor_polygonsToFill`:`PolygonToFill`) | `floor_polygonsToFill` { .uuid , .geometry }] ,clusters: [ floor_clusters IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:CONTAINS]->(c:Cluster) MATCH (c)-[:CONSISTS_OF]->(w:WorkPoint) return c {.*, workpoints: collect(w.uuid)}\", {this: floor}, true) | floor_clusters { .uuid , .geometry , .workpoints }] ,workpoints: [ floor_workpoints IN apoc.cypher.runFirstColumn(\"MATCH (this)-[:CONTAINS]->(c:Cluster)-[:CONSISTS_OF]->(wp:WorkPoint) RETURN wp {.*, clusterId: c.uuid, floorId: this.uuid}\", {this: floor}, true) | floor_workpoints { .uuid , .geometry }] ,wall_perimeters: [(`floor`)-[:`CONTAINS`]->(`floor_wall_perimeters`:`WallPerimeter`) | `floor_wall_perimeters` { .uuid , .geometry }] ,wall_partitions: [(`floor`)-[:`CONTAINS`]->(`floor_wall_partitions`:`WallPartition`) | `floor_wall_partitions` { .uuid , .geometry }] ,visualization_lines: [(`floor`)-[:`CONTAINS`]->(`floor_visualization_lines`:`VisualizationItem`) | `floor_visualization_lines` { .uuid , .geometry }] } AS `floor`"
+  },

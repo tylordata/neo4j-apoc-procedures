@@ -1,0 +1,17 @@
+f49e493e (suspected graphql user)
+
+CALL
+    db.index.fulltext.queryNodes(\"SearchIndex\", $param1) YIELD node AS this
+WHERE
+    (\"FaultCode\" IN labels(this)
+    AND apoc.cypher.runFirstColumn(
+        \" MATCH (this)-[aggr_edge:RELATED_TO]->(aggr_node:Question)
+        RETURN count(aggr_node) >= $aggr_count_GTE\",
+        { this: this, aggr_count_GTE: $aggr_count_GTE }, false ))
+WITH
+    this
+ORDER BY
+    this.createdAt DESC
+RETURN
+this { .id, .obdCode, .severity, .title_de, .title_en, .genericEtkCategory, .brandSpecificEtkCategory, createdAt: apoc.date.convertFormat(toString(this.createdAt), \"iso_zoned_date_time\", \"iso_offset_date_time\") } as this"
+  },

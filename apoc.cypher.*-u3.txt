@@ -1,0 +1,23 @@
+bfbfd626
+
+"MATCH
+    (d1:Domain)-[r]-(d2:Domain)
+WHERE
+    d1.name IN $source_domains
+    AND NOT d2.name IN $skip_domains
+    AND r.insert_ts \u003e $oldest_ts
+WITH
+    d1, r, d2, TYPE(r) AS r_type
+CALL
+    apoc.cypher.run(
+        \"WITH d1, r, d2, SIZE([(d2)-[r2:\" + r_type + \"]-(d3) | d3]) AS c \" +
+        \"WHERE c \u003c max_relationship_count\" +
+        \"RETURN d1, r, d2, c\",
+        {d1:d1, r:r, d2: d2, max_relationship_count: $max_relationship_count}
+    ) YIELD value
+RETURN
+    value.d1 AS d1, value.r AS r, value.d2 AS d2, value.c AS c
+ORDER BY
+    c
+LIMIT
+    $limit_domains
