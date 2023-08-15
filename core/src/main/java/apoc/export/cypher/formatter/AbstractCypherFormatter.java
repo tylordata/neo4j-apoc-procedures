@@ -155,17 +155,18 @@ abstract class AbstractCypherFormatter implements CypherFormatter {
 									   GraphDatabaseService db) {
 		AtomicInteger nodeCount = new AtomicInteger(0);
 		Function<Node, Map.Entry<Set<String>, Set<String>>> keyMapper = (node) -> {
-			try (Transaction tx = db.beginTx()) {
-				node = tx.getNodeById(node.getId());
-				Set<String> idProperties = CypherFormatterUtils.getNodeIdProperties(node, uniqueConstraints).keySet();
-				Set<String> labels = getLabels(node);
-				tx.commit();
-				return new AbstractMap.SimpleImmutableEntry<>(labels, idProperties);
-			}
+		    try (Transaction tx = db.beginTx()) {
+                node = tx.getNodeById(node.getId());
+                Set<String> idProperties = CypherFormatterUtils.getNodeIdProperties(node, uniqueConstraints).keySet();
+                Set<String> labels = getLabels(node);
+                tx.commit();
+                return new AbstractMap.SimpleImmutableEntry<>(labels, idProperties);
+            }
 		};
 		Map<Map.Entry<Set<String>, Set<String>>, List<Node>> groupedData = StreamSupport.stream(nodes.spliterator(), true)
-				.collect(Collectors.groupingByConcurrent(keyMapper));
-
+	        .filter(node -> node.getId() >= 0)
+            .collect(Collectors.groupingByConcurrent(keyMapper));
+		
 		AtomicInteger propertiesCount = new AtomicInteger(0);
 
 		AtomicInteger batchCount = new AtomicInteger(0);
@@ -287,6 +288,7 @@ abstract class AbstractCypherFormatter implements CypherFormatter {
 			}
 		};
 		Map<Map<String, Object>, List<Relationship>> groupedData = StreamSupport.stream(relationship.spliterator(), true)
+		        .filter(rel -> rel.getId() >= 0)
 				.collect(Collectors.groupingByConcurrent(keyMapper));
 
 		AtomicInteger propertiesCount = new AtomicInteger(0);
