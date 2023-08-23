@@ -858,6 +858,21 @@ public class ExportCypherTest {
 
         db.executeTransactionally("DROP INDEX rel_index_name");
     }
+    
+    @Test
+    public void testExportDataUpdateAllCypherResults() {
+        
+        final String callStatement = "call apoc.meta.graph() yield nodes, relationships WITH nodes, relationships" + 
+                                " call apoc.export.cypher.data(nodes, relationships, null, { format: 'plain', cypherFormat: 'updateAll' })" + 
+                                " YIELD file, batches, source, format, nodes as nodes2, relationships as relationships2, properties, time, rows, batchSize, cypherStatements" + 
+                                " RETURN cypherStatements";
+        
+        TestUtil.testCall(db, callStatement, (r) -> {
+            assertResults(null, r, "database");
+            assertNotNull(r.get("cypherStatements"));
+            assertTrue(r.size() > 0);
+        });
+    }
 
     private void relIndexTestCommon(String fileName, String expectedSchema, Map<String, Object> config) throws FileNotFoundException {
         Map<String, Object> exportConfig = map("separateFiles", true, "format", "neo4j-shell");
